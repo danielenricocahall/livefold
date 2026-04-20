@@ -33,3 +33,7 @@ exclude = [
     "README.md",
     "CONTRIBUTING.md"
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pysquagg"]
+include = ["pysquagg/py.typed"]

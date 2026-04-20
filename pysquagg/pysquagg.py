@@ -1,4 +1,6 @@
+import copy as _copy
 import sys
+import weakref
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from functools import cached_property
 
@@ -56,6 +58,7 @@ class PySquagg(list):
             executor = ThreadPoolExecutor()
         else:
             executor = ProcessPoolExecutor()
+        weakref.finalize(self, executor.shutdown)
         return executor.map
 
     def compute_blocks(self, start_index: int = 0):
@@ -161,9 +164,32 @@ class PySquagg(list):
                 self.blocks[block_index]
             )
 
-    def __iter__(self):
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self.blocks = self.compute_blocks()
+
+    def iter_blocks(self):
         for block, agg in zip(self.blocks, self.aggregated_values):
             yield block, agg
+
+    def copy(self):
+        return PySquagg(list(self), self.aggregator_function, self.parallel)
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memo):
+        return PySquagg(
+            _copy.deepcopy(list(self), memo),
+            self.aggregator_function,
+            self.parallel,
+        )
+
+    def __reduce__(self):
+        return (
+            self.__class__,
+            (list(self), self.aggregator_function, self.parallel),
+        )
 
     def query(self, left: int, right: int):
         if right - left <= 0 or right > len(self) or left < 0:
@@ -174,16 +200,20 @@ class PySquagg(list):
         right_block = right // self.block_size
         left_block_start_index = left_block * self.block_size
         left_block_end_index = left_block_start_index + len(self.blocks[left_block]) - 1
+        right_block_start_index = right_block * self.block_size
+        right_block_end_index = (
+            right_block_start_index + len(self.blocks[right_block]) - 1
+        )
+        if left_block == right_block:
+            if left == left_block_start_index and right == right_block_end_index:
+                return self.aggregated_values[left_block]
+            return self.aggregator_function(self[left : right + 1])
         if left != left_block_start_index:
             initial_value = self.aggregator_function(
                 self[left : left_block_end_index + 1]
             )
         else:
             initial_value = self.aggregated_values[left_block]
-        right_block_start_index = right_block * self.block_size
-        right_block_end_index = (
-            right_block_start_index + len(self.blocks[right_block]) - 1
-        )
         if right != right_block_end_index:
             final_value = self.aggregator_function(
                 self[right_block_start_index : right + 1]
