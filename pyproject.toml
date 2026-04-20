@@ -1,6 +1,6 @@
 [project]
 name = "pysquagg"
-version = "1.1.0"
+version = "1.2.0"
 description = "A simple library for performing Square Root Decomposition and Aggregation"
 readme = "README.md"
 authors = [{ name="Daniel Cahall", email="danielenricocahall@gmail.com" }]
