@@ -1,5 +1,8 @@
+import copy
+import pickle
+
 import pytest
-from pysquagg.pysquagg import PySquagg, InvalidRangeException
+from pysquagg import PySquagg, InvalidRangeException
 
 
 def test_basic_pysquagg():
@@ -216,6 +219,74 @@ def test_empty_list():
     assert pysquagg.aggregated_values == []
 
 
-def test_iter():
+def test_iter_yields_elements():
     pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
-    assert list(iter(pysquagg)) == [([0, 1, 2], 3), ([3, 4, 5], 12), ([6, 7, 8], 21)]
+    assert list(iter(pysquagg)) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    assert list(pysquagg) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    assert 4 in pysquagg
+
+
+def test_iter_blocks():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    assert list(pysquagg.iter_blocks()) == [
+        ([0, 1, 2], 3),
+        ([3, 4, 5], 12),
+        ([6, 7, 8], 21),
+    ]
+
+
+def test_query_same_block_partial():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    assert pysquagg.query(1, 2) == 3
+    assert pysquagg.query(0, 1) == 1
+    assert pysquagg.query(3, 5) == 12
+    assert pysquagg.query(4, 5) == 9
+
+
+def test_delitem():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    del pysquagg[3]
+    assert list(pysquagg) == [0, 1, 2, 4, 5, 6, 7, 8]
+    assert pysquagg.blocks == [[0, 1], [2, 4], [5, 6], [7, 8]]
+    assert pysquagg.aggregated_values == [1, 6, 11, 15]
+
+
+def test_delitem_slice():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    del pysquagg[2:5]
+    assert list(pysquagg) == [0, 1, 5, 6, 7, 8]
+    assert pysquagg.blocks == [[0, 1], [5, 6], [7, 8]]
+    assert pysquagg.aggregated_values == [1, 11, 15]
+
+
+def test_copy():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    clone = pysquagg.copy()
+    assert isinstance(clone, PySquagg)
+    assert list(clone) == list(pysquagg)
+    assert clone.blocks == pysquagg.blocks
+    assert clone.aggregated_values == pysquagg.aggregated_values
+    clone.append(9)
+    assert list(pysquagg) == [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+
+def test_copy_module():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    shallow = copy.copy(pysquagg)
+    assert isinstance(shallow, PySquagg)
+    assert list(shallow) == list(pysquagg)
+    deep = copy.deepcopy(pysquagg)
+    assert isinstance(deep, PySquagg)
+    assert list(deep) == list(pysquagg)
+    assert deep.aggregated_values == pysquagg.aggregated_values
+
+
+def test_pickle_roundtrip():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
+    restored = pickle.loads(pickle.dumps(pysquagg))
+    assert isinstance(restored, PySquagg)
+    assert list(restored) == list(pysquagg)
+    assert restored.blocks == pysquagg.blocks
+    assert restored.aggregated_values == pysquagg.aggregated_values
+    restored.append(9)
+    assert restored.aggregated_values[-1] == 9
