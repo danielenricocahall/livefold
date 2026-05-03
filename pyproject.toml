@@ -1,7 +1,7 @@
 [project]
 name = "livefold"
 version = "0.0.0"
-description = "A simple library for performing Square Root Decomposition and Aggregation"
+description = "A primitive for online sequential aggregation in Python"
 readme = "README.md"
 authors = [{ name="Daniel Cahall", email="danielenricocahall@gmail.com" }]
 requires-python = ">=3.10"
