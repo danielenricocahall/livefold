@@ -21,9 +21,6 @@ random.seed(42)
 N_GRID = [10**i for i in range(2, 8)]  # 100, 1k, 10k, 100k, 1M, 10M
 QUERIES = 1000
 APPENDS = 1000
-# pandas/numpy O(n) per append × 1000 appends gets infeasible above this
-APPEND_CAP_N = 100_000
-APPEND_CAPPED_BACKENDS = {"pandas", "numpy"}
 
 
 def generate_data(n: int) -> list[float]:
@@ -75,9 +72,6 @@ def run_append_workload() -> dict[str, dict[int, float]]:
     for n in N_GRID:
         data = generate_data(n)
         for B in BACKENDS:
-            if B.name in APPEND_CAPPED_BACKENDS and n > APPEND_CAP_N:
-                print(f"  n={n:>8,d}  {B.name:>12s}: skipped (cap)")
-                continue
             backend = B(data)
             median = time_appends(backend)
             results[B.name][n] = median
@@ -148,10 +142,8 @@ def write_results(
         "",
         "- `naive` — Python list, full slice + reduction per query",
         "- `prefix_sums` — prefix array for sum; naive scan for max/min",
-        "- `numpy` — `np.ndarray`, rebuilt on append via `np.append` (capped at"
-        " n=100,000 for the append benchmark — O(n) per append)",
-        "- `pandas` — `pd.Series`, rebuilt on append (capped at n=100,000 for the"
-        " append benchmark — O(n) per append)",
+        "- `numpy` — `np.ndarray`, rebuilt on append via `np.append` (O(n) per append)",
+        "- `pandas` — `pd.Series`, rebuilt on append (O(n) per append)",
         "- `livefold` — `LiveFold` with `{sum, max, min}` folds",
         "",
         "## Reading these curves",
