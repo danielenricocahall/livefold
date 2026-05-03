@@ -8,9 +8,9 @@ class InvalidRangeException(Exception): ...
 
 
 class LiveFold(list):
-    def __init__(self, data: Iterable[Any], aggregator_function: Callable):
+    def __init__(self, data: Iterable[Any], folds: Callable):
         super().__init__(data)
-        self.aggregator_function = aggregator_function
+        self.folds = folds
         self._blocks = self.compute_blocks()
 
     @property
@@ -34,7 +34,7 @@ class LiveFold(list):
     @property
     def aggregated_values(self):
         if not hasattr(self, "_aggregated_values"):
-            self.aggregated_values = list(map(self.aggregator_function, self.blocks))
+            self.aggregated_values = list(map(self.folds, self.blocks))
         return self._aggregated_values
 
     @aggregated_values.setter
@@ -63,7 +63,7 @@ class LiveFold(list):
             self.blocks[block_index].insert(__index % block_size, __object)
             self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
             self.aggregated_values[block_index:] = list(
-                map(self.aggregator_function, self.blocks[block_index:])
+                map(self.folds, self.blocks[block_index:])
             )
 
     def sort(self, *, key=None, reverse=False):
@@ -78,7 +78,7 @@ class LiveFold(list):
             self.blocks = self.compute_blocks()
         else:
             if (index := self.block_size - len(self.blocks[-1])) > 0:
-                self.aggregated_values[-1] = self.aggregator_function(
+                self.aggregated_values[-1] = self.folds(
                     [self.aggregated_values[-1], *__iterable[:index]]
                 )
                 self.blocks[-1] += __iterable[:index]
@@ -91,7 +91,7 @@ class LiveFold(list):
             for i in range(0, len(iterable), self.block_size)
         ]
         self.blocks.extend(new_blocks)
-        self.aggregated_values.extend(map(self.aggregator_function, new_blocks))
+        self.aggregated_values.extend(map(self.folds, new_blocks))
 
     def pop(self, __index=-1):
         block_size = self.block_size
@@ -110,7 +110,7 @@ class LiveFold(list):
                     block_index * block_size
                 )
                 self.aggregated_values[block_index:] = list(
-                    map(self.aggregator_function, self.blocks[block_index:])
+                    map(self.folds, self.blocks[block_index:])
                 )
         return value
 
@@ -125,7 +125,7 @@ class LiveFold(list):
         self.blocks = self.compute_blocks()
 
     def __add__(self, other):
-        return LiveFold(super().__add__(other), self.aggregator_function)
+        return LiveFold(super().__add__(other), self.folds)
 
     def __iadd__(self, other):
         self.extend(other)
@@ -140,9 +140,7 @@ class LiveFold(list):
         else:
             block_index = key // self.block_size
             self.blocks[block_index][key % self.block_size] = value
-            self.aggregated_values[block_index] = self.aggregator_function(
-                self.blocks[block_index]
-            )
+            self.aggregated_values[block_index] = self.folds(self.blocks[block_index])
 
     def __delitem__(self, key):
         super().__delitem__(key)
@@ -153,7 +151,7 @@ class LiveFold(list):
             yield block, agg
 
     def copy(self):
-        return LiveFold(list(self), self.aggregator_function)
+        return LiveFold(list(self), self.folds)
 
     def __copy__(self):
         return self.copy()
@@ -161,13 +159,13 @@ class LiveFold(list):
     def __deepcopy__(self, memo):
         return LiveFold(
             _copy.deepcopy(list(self), memo),
-            self.aggregator_function,
+            self.folds,
         )
 
     def __reduce__(self):
         return (
             self.__class__,
-            (list(self), self.aggregator_function),
+            (list(self), self.folds),
         )
 
     def query(self, left: int, right: int):
@@ -186,20 +184,16 @@ class LiveFold(list):
         if left_block == right_block:
             if left == left_block_start_index and right == right_block_end_index:
                 return self.aggregated_values[left_block]
-            return self.aggregator_function(self[left : right + 1])
+            return self.folds(self[left : right + 1])
         if left != left_block_start_index:
-            initial_value = self.aggregator_function(
-                self[left : left_block_end_index + 1]
-            )
+            initial_value = self.folds(self[left : left_block_end_index + 1])
         else:
             initial_value = self.aggregated_values[left_block]
         if right != right_block_end_index:
-            final_value = self.aggregator_function(
-                self[right_block_start_index : right + 1]
-            )
+            final_value = self.folds(self[right_block_start_index : right + 1])
         else:
             final_value = self.aggregated_values[right_block]
-        return self.aggregator_function(
+        return self.folds(
             self.aggregated_values[left_block + 1 : right_block]
             + [initial_value, final_value]
         )
