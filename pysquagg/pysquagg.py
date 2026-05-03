@@ -1,8 +1,4 @@
 import copy as _copy
-import sys
-import weakref
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from functools import cached_property
 
 from math import sqrt, floor
 from typing import Any, Iterable, Callable
@@ -12,13 +8,10 @@ class InvalidRangeException(Exception): ...
 
 
 class PySquagg(list):
-    def __init__(
-        self, data: Iterable[Any], aggregator_function: Callable, parallel: bool = False
-    ):
+    def __init__(self, data: Iterable[Any], aggregator_function: Callable):
         super().__init__(data)
         self.aggregator_function = aggregator_function
         self._blocks = self.compute_blocks()
-        self.parallel = parallel
 
     @property
     def block_size(self):
@@ -41,25 +34,12 @@ class PySquagg(list):
     @property
     def aggregated_values(self):
         if not hasattr(self, "_aggregated_values"):
-            self.aggregated_values = list(
-                self.map_(self.aggregator_function, self.blocks)
-            )
+            self.aggregated_values = list(map(self.aggregator_function, self.blocks))
         return self._aggregated_values
 
     @aggregated_values.setter
     def aggregated_values(self, values):
         self._aggregated_values = values
-
-    @cached_property
-    def map_(self):
-        if not self.parallel:
-            return map
-        if sys.version_info.minor >= 13 and sys._is_gil_enabled():
-            executor = ThreadPoolExecutor()
-        else:
-            executor = ProcessPoolExecutor()
-        weakref.finalize(self, executor.shutdown)
-        return executor.map
 
     def compute_blocks(self, start_index: int = 0):
         if not self.block_size:
@@ -83,7 +63,7 @@ class PySquagg(list):
             self.blocks[block_index].insert(__index % block_size, __object)
             self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
             self.aggregated_values[block_index:] = list(
-                self.map_(self.aggregator_function, self.blocks[block_index:])
+                map(self.aggregator_function, self.blocks[block_index:])
             )
 
     def sort(self, *, key=None, reverse=False):
@@ -111,7 +91,7 @@ class PySquagg(list):
             for i in range(0, len(iterable), self.block_size)
         ]
         self.blocks.extend(new_blocks)
-        self.aggregated_values.extend(self.map_(self.aggregator_function, new_blocks))
+        self.aggregated_values.extend(map(self.aggregator_function, new_blocks))
 
     def pop(self, __index=-1):
         block_size = self.block_size
@@ -130,7 +110,7 @@ class PySquagg(list):
                     block_index * block_size
                 )
                 self.aggregated_values[block_index:] = list(
-                    self.map_(self.aggregator_function, self.blocks[block_index:])
+                    map(self.aggregator_function, self.blocks[block_index:])
                 )
         return value
 
@@ -173,7 +153,7 @@ class PySquagg(list):
             yield block, agg
 
     def copy(self):
-        return PySquagg(list(self), self.aggregator_function, self.parallel)
+        return PySquagg(list(self), self.aggregator_function)
 
     def __copy__(self):
         return self.copy()
@@ -182,13 +162,12 @@ class PySquagg(list):
         return PySquagg(
             _copy.deepcopy(list(self), memo),
             self.aggregator_function,
-            self.parallel,
         )
 
     def __reduce__(self):
         return (
             self.__class__,
-            (list(self), self.aggregator_function, self.parallel),
+            (list(self), self.aggregator_function),
         )
 
     def query(self, left: int, right: int):
