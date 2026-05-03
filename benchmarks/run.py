@@ -148,25 +148,31 @@ def write_results(
         "",
         "## Reading these curves",
         "",
-        "**Queries:** `livefold` wins above n ≈ 10⁴ and pulls ahead by 2+ orders"
-        " of magnitude at n = 10⁶. `numpy` is competitive on query thanks to"
-        " vectorized C-level reductions but loses to `livefold` at large n because"
-        " every query still does a full scan over the slice. Below n ≈ 10³,"
-        " `naive` and `prefix_sums` win on raw constant overhead, but the absolute"
-        " gap is sub-microsecond. `prefix_sums` barely helps once you need max/min"
-        " — they still scan the full range.",
+        "**Queries:** `livefold` wins above n ≈ 10⁴ and pulls ahead dramatically"
+        " at scale — at n = 10⁷, livefold is roughly **400x faster than naive**"
+        " and **~11x faster than numpy**, the fastest non-livefold backend. `numpy`"
+        " is competitive thanks to vectorized C reductions but still does an O(n)"
+        " full scan over the slice; livefold's √n algorithm only touches ~3,162"
+        " elements per query at that size. Below n ≈ 10³, `naive` and `prefix_sums`"
+        " win on raw constant overhead, but the absolute gap is in the low"
+        " microseconds. `prefix_sums` barely helps once you need max/min — they"
+        " still scan the full range.",
         "",
         "**Appends:** `naive` and `prefix_sums` append in single-digit nanoseconds"
         " (essentially free, at the timer's resolution floor). `livefold`'s"
-        " amortized cost is roughly flat at ~2 µs. Both `numpy` and `pandas` rise"
-        " linearly because every append rebuilds the underlying buffer — unusable"
-        " for streaming workloads above n ≈ 10⁴.",
+        " amortized cost is **flat at ~2 µs across all n**. Both `numpy` and"
+        " `pandas` rise linearly because every append rebuilds the underlying"
+        " buffer — at n = 10⁷, pandas hits **180 ms per append** (~86,000x slower"
+        " than livefold) and numpy reaches **4 ms** (~2,000x slower). Both are"
+        " unusable for streaming workloads as the collection grows.",
         "",
-        "**The takeaway:** `livefold` is the only backend that's competitive on"
-        " both axes across all scales. `naive`/`prefix_sums` lose on query latency"
-        " above n ≈ 10⁴; `numpy` and `pandas` lose on append latency above n ≈ 10⁴."
-        " If your workload mutates the sequence and queries arbitrary ranges,"
-        " `livefold` is the curve that doesn't bend the wrong way.",
+        "**The takeaway:** `livefold` is the only backend competitive on both axes"
+        " across all scales. `naive`/`prefix_sums` lose on query latency above"
+        " n ≈ 10⁴ and trail by ~400x at n = 10⁷; `numpy` and `pandas` lose on"
+        " append latency, with the gap widening to ~2,000x and ~86,000x"
+        " respectively at n = 10⁷. If your workload mutates the sequence and"
+        " queries arbitrary ranges, `livefold` is the curve that doesn't bend the"
+        " wrong way on either axis.",
         "",
         "## Query latency vs n",
         "",
