@@ -1,6 +1,6 @@
 ---
-name: PySquagg Bug Report
-about: Create a report to help us improve pysquagg
+name: LiveFold Bug Report
+about: Create a report to help us improve livefold
 title: "[BUG]"
 labels: bug
 assignees: danielenricocahall

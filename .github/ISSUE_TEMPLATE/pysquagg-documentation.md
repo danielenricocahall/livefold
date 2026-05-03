@@ -1,5 +1,5 @@
 ---
-name: PySquagg Documentation
+name: LiveFold Documentation
 about: Proposal for new or improved API documentation
 title: "[DOCS]"
 labels: documentation
