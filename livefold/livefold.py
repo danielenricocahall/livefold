@@ -34,7 +34,10 @@ class LiveFold(list):
     @property
     def folded_values(self):
         if not hasattr(self, "_folded_values"):
-            self.folded_values = list(map(self.folds, self.blocks))
+            _folded_values = {}
+            for fold_name, fold_func in self.folds.items():
+                _folded_values[fold_name] = list(map(fold_func, self.blocks))
+            self.folded_values = _folded_values
         return self._folded_values
 
     @folded_values.setter
@@ -62,9 +65,10 @@ class LiveFold(list):
             block_index = __index // block_size
             self.blocks[block_index].insert(__index % block_size, __object)
             self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
-            self.folded_values[block_index:] = list(
-                map(self.folds, self.blocks[block_index:])
-            )
+            for fold_name, fold_func in self.folds.items():
+                self.folded_values[fold_name][block_index:] = list(
+                    map(fold_func, self.blocks[block_index:])
+                )
 
     def sort(self, *, key=None, reverse=False):
         super().sort(key=key, reverse=reverse)
@@ -78,9 +82,11 @@ class LiveFold(list):
             self.blocks = self.compute_blocks()
         else:
             if (index := self.block_size - len(self.blocks[-1])) > 0:
-                self.folded_values[-1] = self.folds(
-                    [self.folded_values[-1], *__iterable[:index]]
-                )
+                for fold_name, fold_func in self.folds.items():
+                    fold_value = fold_func(
+                        [self.folded_values[fold_name][-1], *__iterable[:index]]
+                    )
+                    self.folded_values[fold_name][-1] = fold_value
                 self.blocks[-1] += __iterable[:index]
                 __iterable = __iterable[index:]
             self.__extend_blocks(__iterable)
@@ -91,7 +97,9 @@ class LiveFold(list):
             for i in range(0, len(iterable), self.block_size)
         ]
         self.blocks.extend(new_blocks)
-        self.folded_values.extend(map(self.folds, new_blocks))
+        for fold_name, fold_func in self.folds.items():
+            fold_values = list(map(fold_func, new_blocks))
+            self.folded_values[fold_name].extend(fold_values)
 
     def pop(self, __index=-1):
         block_size = self.block_size
@@ -104,14 +112,15 @@ class LiveFold(list):
             self.blocks[block_index].pop(__index % block_size if __index >= 0 else -1)
             if len(self.blocks[block_index]) == 0:
                 del self.blocks[block_index]
-                del self.folded_values[block_index]
+                for fold_name, fold_func in self.folds.items():
+                    del self.folded_values[fold_name][block_index]
             else:
                 self.blocks[block_index:] = self.compute_blocks(
                     block_index * block_size
                 )
-                self.folded_values[block_index:] = list(
-                    map(self.folds, self.blocks[block_index:])
-                )
+                for fold_name, fold_func in self.folds.items():
+                    fold_value = list(map(fold_func, self.blocks[block_index:]))
+                    self.folded_values[fold_name][block_index:] = fold_value
         return value
 
     def remove(self, __value):
@@ -140,7 +149,10 @@ class LiveFold(list):
         else:
             block_index = key // self.block_size
             self.blocks[block_index][key % self.block_size] = value
-            self.folded_values[block_index] = self.folds(self.blocks[block_index])
+            for fold_name, fold_func in self.folds.items():
+                self.folded_values[fold_name][block_index] = fold_func(
+                    self.blocks[block_index]
+                )
 
     def __delitem__(self, key):
         super().__delitem__(key)
