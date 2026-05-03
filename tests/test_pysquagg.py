@@ -25,9 +25,8 @@ def test_extend():
     assert pysquagg.aggregated_values == [6, 15, 24]
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_insert_no_change_to_block_size(parallel):
-    pysquagg = PySquagg([1, 2, 3, 5, 6, 7], aggregator_function=sum, parallel=parallel)
+def test_insert_no_change_to_block_size():
+    pysquagg = PySquagg([1, 2, 3, 5, 6, 7], aggregator_function=sum)
     assert pysquagg.aggregated_values == [3, 8, 13]
     pysquagg.insert(3, 4)
     assert pysquagg.block_size == 2
@@ -35,11 +34,8 @@ def test_insert_no_change_to_block_size(parallel):
     assert pysquagg.aggregated_values == [3, 7, 11, 7]
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_insert_block_size_changes(parallel):
-    pysquagg = PySquagg(
-        [1, 2, 3, 5, 6, 7, 8, 9], aggregator_function=sum, parallel=parallel
-    )
+def test_insert_block_size_changes():
+    pysquagg = PySquagg([1, 2, 3, 5, 6, 7, 8, 9], aggregator_function=sum)
     orig_blocks = pysquagg.blocks
     pysquagg.insert(3, 4)
     assert pysquagg.block_size == 3
@@ -63,17 +59,15 @@ def test_concat_finish_last_block():
     assert pysquagg.aggregated_values == [3, 7, 11]
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_concat_add_new_blocks(parallel):
-    pysquagg = PySquagg([1, 2, 3, 4], aggregator_function=sum, parallel=parallel)
+def test_concat_add_new_blocks():
+    pysquagg = PySquagg([1, 2, 3, 4], aggregator_function=sum)
     assert pysquagg.aggregated_values == [3, 7]
     pysquagg += [5, 6, 7, 8]
     assert pysquagg.aggregated_values == [3, 7, 11, 15]
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_blocks_and_agg_concat_finish_last_block_and_add_new_blocks(parallel):
-    pysquagg = PySquagg(list(range(10)), aggregator_function=sum, parallel=parallel)
+def test_blocks_and_agg_concat_finish_last_block_and_add_new_blocks():
+    pysquagg = PySquagg(list(range(10)), aggregator_function=sum)
     pysquagg += [10, 11, 12, 13, 14]
     assert pysquagg.aggregated_values == [3, 12, 21, 30, 39]
 
@@ -86,9 +80,8 @@ def test_pop_last_value():
     assert pysquagg.aggregated_values == [3, 7]
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_pop_value(parallel):
-    pysquagg = PySquagg([1, 2, 3, 4, 5], aggregator_function=sum, parallel=parallel)
+def test_pop_value():
+    pysquagg = PySquagg([1, 2, 3, 4, 5], aggregator_function=sum)
     assert pysquagg.aggregated_values == [3, 7, 5]
     val = pysquagg.pop(2)
     assert val == 3
@@ -96,11 +89,8 @@ def test_pop_value(parallel):
     assert pysquagg.aggregated_values == [3, 9]
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_pop_change_block_size(parallel):
-    pysquagg = PySquagg(
-        [1, 2, 3, 4, 5, 6, 7, 8, 9], aggregator_function=sum, parallel=parallel
-    )
+def test_pop_change_block_size():
+    pysquagg = PySquagg([1, 2, 3, 4, 5, 6, 7, 8, 9], aggregator_function=sum)
     assert pysquagg.aggregated_values == [6, 15, 24]
     val = pysquagg.pop(2)
     assert val == 3
@@ -149,11 +139,8 @@ def test_compute_blocks_invalid_range(left, right):
         pysquagg.query(left, right)
 
 
-@pytest.mark.parametrize("parallel", [True, False])
-def test_sort(parallel):
-    pysquagg = PySquagg(
-        [0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum, parallel=parallel
-    )
+def test_sort():
+    pysquagg = PySquagg([0, 1, 2, 3, 4, 5, 6, 7, 8], aggregator_function=sum)
     assert pysquagg.blocks == [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
     assert pysquagg.aggregated_values == [3, 12, 21]
     pysquagg.sort(reverse=True)
