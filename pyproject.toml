@@ -1,5 +1,5 @@
 [project]
-name = "pysquagg"
+name = "livefold"
 version = "1.2.0"
 description = "A simple library for performing Square Root Decomposition and Aggregation"
 readme = "README.md"

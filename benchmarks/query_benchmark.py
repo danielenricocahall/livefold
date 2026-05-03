@@ -1,7 +1,7 @@
 import random
 import timeit
 
-from pysquagg.pysquagg import PySquagg
+from livefold.livefold import PySquagg
 
 aggregator_function = sum
 n = 100_000

@@ -1,6 +1,6 @@
 ---
 name: PySquagg Feature Request
-about: Suggest an enhancement or revision for pysquagg
+about: Suggest an enhancement or revision for livefold
 title: "[FEATURE]"
 labels: enhancement
 assignees: danielenricocahall

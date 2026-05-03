@@ -22,22 +22,23 @@ Additionally, the `PySquagg` object can be modified after creation (e.g; `append
 
 # API & Usage
 The API for using `pysquagg` is simple, as we're only providing a single class `PySquagg`:
+
 ```python
-from pysquagg.pysquagg import PySquagg
+from livefold.livefold import PySquagg
 
 pysquagg_instance = PySquagg([1, 2, 3, 4, 5, 6], aggregator_function=sum)
-pysquagg_instance.blocks # will print [[1, 2], [3, 4], [5, 6]]
-pysquagg_instance.aggregated_values # will print [3, 7, 11]
-pysquagg_instance.query(0, 5) # will print 21
+pysquagg_instance.blocks  # will print [[1, 2], [3, 4], [5, 6]]
+pysquagg_instance.aggregated_values  # will print [3, 7, 11]
+pysquagg_instance.query(0, 5)  # will print 21
 pysquagg_instance += [7, 8]
-pysquagg_instance.blocks # will print [[1, 2], [3, 4], [5, 6], [7, 8]]
+pysquagg_instance.blocks  # will print [[1, 2], [3, 4], [5, 6], [7, 8]]
 pysquagg_instance.append(9)
-pysquagg_instance.blocks # will print [[1, 2, 3], [4, 5, 6], [7, 8, 9]] - the block size has been recomputed from 2 -> 3
-pysquagg_instance.aggregated_values # will print [6, 15, 24]
-pysquagg_instance.query(0, 8) # will print 45
+pysquagg_instance.blocks  # will print [[1, 2, 3], [4, 5, 6], [7, 8, 9]] - the block size has been recomputed from 2 -> 3
+pysquagg_instance.aggregated_values  # will print [6, 15, 24]
+pysquagg_instance.query(0, 8)  # will print 45
 pysquagg_instance.pop()
 pysquagg_instance[2] = -1
-pysquagg_instance.blocks # will print [[1, 2], [-1, 4], [5, 6], [7, 8]] - block_size has dropped down from 3 -> 2
+pysquagg_instance.blocks  # will print [[1, 2], [-1, 4], [5, 6], [7, 8]] - block_size has dropped down from 3 -> 2
 ```
 
 # Performance Characteristics

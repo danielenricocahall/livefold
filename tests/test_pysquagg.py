@@ -2,7 +2,7 @@ import copy
 import pickle
 
 import pytest
-from pysquagg import LiveFold, InvalidRangeException
+from livefold import LiveFold, InvalidRangeException
 
 
 def test_basic():
