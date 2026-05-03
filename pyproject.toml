@@ -1,6 +1,6 @@
 [project]
 name = "livefold"
-version = "1.2.0"
+version = "0.0.0"
 description = "A simple library for performing Square Root Decomposition and Aggregation"
 readme = "README.md"
 authors = [{ name="Daniel Cahall", email="danielenricocahall@gmail.com" }]
@@ -9,7 +9,7 @@ dependencies = []
 license-files = ["LICENSE"]
 
 [project.urls]
-"Source code" = "https://github.com/danielenricocahall/pysquagg"
+"Source code" = "https://github.com/danielenricocahall/livefold"
 
 [tool.uv]
 
@@ -35,5 +35,5 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["pysquagg"]
-include = ["pysquagg/py.typed"]
+packages = ["livefold"]
+include = ["livefold/py.typed"]
