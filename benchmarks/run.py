@@ -18,7 +18,7 @@ from benchmarks.backends import BACKENDS
 
 random.seed(42)
 
-N_GRID = [10**i for i in range(2, 7)]  # 100, 1k, 10k, 100k, 1M
+N_GRID = [10**i for i in range(2, 8)]  # 100, 1k, 10k, 100k, 1M, 10M
 QUERIES = 1000
 APPENDS = 1000
 PANDAS_CAP_N = (
