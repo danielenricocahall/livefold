@@ -23,6 +23,12 @@ bench = [
     "pandas>=2.0",
     "matplotlib>=3.8",
 ]
+demo = [
+    "streamlit>=1.40",
+    "streamlit-autorefresh>=1.0",
+    "plotly>=5.20",
+    "psutil>=6.0",
+]
 
 
 [build-system]
