@@ -7,7 +7,7 @@ from typing import Any, Iterable, Callable
 class InvalidRangeException(Exception): ...
 
 
-class PySquagg(list):
+class LiveFold(list):
     def __init__(self, data: Iterable[Any], aggregator_function: Callable):
         super().__init__(data)
         self.aggregator_function = aggregator_function
@@ -125,7 +125,7 @@ class PySquagg(list):
         self.blocks = self.compute_blocks()
 
     def __add__(self, other):
-        return PySquagg(super().__add__(other), self.aggregator_function)
+        return LiveFold(super().__add__(other), self.aggregator_function)
 
     def __iadd__(self, other):
         self.extend(other)
@@ -153,13 +153,13 @@ class PySquagg(list):
             yield block, agg
 
     def copy(self):
-        return PySquagg(list(self), self.aggregator_function)
+        return LiveFold(list(self), self.aggregator_function)
 
     def __copy__(self):
         return self.copy()
 
     def __deepcopy__(self, memo):
-        return PySquagg(
+        return LiveFold(
             _copy.deepcopy(list(self), memo),
             self.aggregator_function,
         )

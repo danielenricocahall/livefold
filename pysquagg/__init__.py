@@ -1,3 +1,3 @@
-from pysquagg.pysquagg import PySquagg, InvalidRangeException
+from pysquagg.pysquagg import LiveFold, InvalidRangeException
 
-__all__ = ["PySquagg", "InvalidRangeException"]
+__all__ = ["LiveFold", "InvalidRangeException"]
