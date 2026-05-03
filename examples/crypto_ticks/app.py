@@ -66,7 +66,7 @@ def append_ticks(rate_multiplier: int) -> None:
 
 
 def reset() -> None:
-    for key in ("lf", "timestamps", "last_price", "start", "rng"):
+    for key in ("lf", "timestamps", "last_price", "start", "rng", "window_slider"):
         st.session_state.pop(key, None)
 
 
@@ -126,7 +126,8 @@ window = st.slider(
     min_value=t_min,
     max_value=t_max,
     value=(max(t_min, t_max - 30), t_max),
-    step=max(1.0, (t_max - t_min) / 200),
+    step=1.0,
+    key="window_slider",
 )
 
 left_idx = bisect.bisect_left(ts, window[0])

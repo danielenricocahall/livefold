@@ -47,7 +47,7 @@ def append_reading(metric: str) -> None:
 
 
 def reset() -> None:
-    for key in ("lf", "timestamps", "start"):
+    for key in ("lf", "timestamps", "start", "window_slider"):
         st.session_state.pop(key, None)
 
 
@@ -106,6 +106,7 @@ window = st.slider(
     max_value=t_max,
     value=(t_min, t_max),
     step=1.0,
+    key="window_slider",
 )
 
 left_idx = bisect.bisect_left(ts, window[0])
