@@ -3,6 +3,7 @@ import pickle
 
 import pytest
 from livefold import LiveFold, InvalidRangeException
+from livefold.livefold import InvalidFoldException
 
 
 def test_basic():
@@ -137,6 +138,11 @@ def test_compute_blocks_invalid_range(left, right):
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
     with pytest.raises(InvalidRangeException):
         lf.query(left, right)
+
+
+def test_empty_folds():
+    with pytest.raises(InvalidFoldException):
+        LiveFold([0, 1, 2, 3, 4, 5], folds={})
 
 
 def test_sort():

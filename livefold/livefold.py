@@ -7,9 +7,16 @@ from typing import Any, Iterable, Callable
 class InvalidRangeException(Exception): ...
 
 
+class InvalidFoldException(Exception): ...
+
+
 class LiveFold(list):
     def __init__(self, data: Iterable[Any], folds: dict[str, Callable]):
         super().__init__(data)
+        if not folds:
+            raise InvalidFoldException(
+                "Cannot initialize LiveFold with no `folds` provided"
+            )
         self.folds = folds
         self._blocks = self.compute_blocks()
 
