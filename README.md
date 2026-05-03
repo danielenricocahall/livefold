@@ -1,6 +1,6 @@
 # Overview
 
-[![Build Status](https://github.com/danielenricocahall/pysquagg/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielenricocahall/pysquagg/actions/workflows/ci.yaml/badge.svg)
+[![Build Status](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielenricocahall/pysquagg/actions/workflows/ci.yaml/badge.svg)
 [![Supported Versions](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/danielenricocahall/pysquagg/blob/main/LICENSE)
 
