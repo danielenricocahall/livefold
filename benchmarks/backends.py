@@ -3,6 +3,7 @@ returning a {sum, max, min} dict so the comparison is apples-to-apples."""
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from livefold import LiveFold
@@ -50,6 +51,28 @@ class PrefixSumBackend:
         }
 
 
+class NumpyBackend:
+    """np.ndarray; appends via np.append (O(n) rebuild — the canonical
+    one-element-at-a-time pattern for users who haven't reached for a
+    geometrically-growing buffer)."""
+
+    name = "numpy"
+
+    def __init__(self, data: list[float]) -> None:
+        self.arr = np.array(data, dtype=float)
+
+    def append(self, value: float) -> None:
+        self.arr = np.append(self.arr, value)
+
+    def query(self, left: int, right: int) -> dict[str, float]:
+        sub = self.arr[left : right + 1]
+        return {
+            "sum": float(sub.sum()),
+            "max": float(sub.max()),
+            "min": float(sub.min()),
+        }
+
+
 class PandasBackend:
     """pd.Series; rebuilt on append, which is the canonical pattern for
     users who want a Series for query ergonomics."""
@@ -86,4 +109,10 @@ class LiveFoldBackend:
         return self.lf.query(left, right)
 
 
-BACKENDS = [NaiveBackend, PrefixSumBackend, PandasBackend, LiveFoldBackend]
+BACKENDS = [
+    NaiveBackend,
+    PrefixSumBackend,
+    NumpyBackend,
+    PandasBackend,
+    LiveFoldBackend,
+]

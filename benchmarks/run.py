@@ -21,9 +21,9 @@ random.seed(42)
 N_GRID = [10**i for i in range(2, 8)]  # 100, 1k, 10k, 100k, 1M, 10M
 QUERIES = 1000
 APPENDS = 1000
-PANDAS_CAP_N = (
-    100_000  # pandas O(n) per append × 1000 appends gets infeasible above this
-)
+# pandas/numpy O(n) per append × 1000 appends gets infeasible above this
+APPEND_CAP_N = 100_000
+APPEND_CAPPED_BACKENDS = {"pandas", "numpy"}
 
 
 def generate_data(n: int) -> list[float]:
@@ -75,7 +75,7 @@ def run_append_workload() -> dict[str, dict[int, float]]:
     for n in N_GRID:
         data = generate_data(n)
         for B in BACKENDS:
-            if B.name == "pandas" and n > PANDAS_CAP_N:
+            if B.name in APPEND_CAPPED_BACKENDS and n > APPEND_CAP_N:
                 print(f"  n={n:>8,d}  {B.name:>12s}: skipped (cap)")
                 continue
             backend = B(data)
@@ -148,27 +148,31 @@ def write_results(
         "",
         "- `naive` — Python list, full slice + reduction per query",
         "- `prefix_sums` — prefix array for sum; naive scan for max/min",
+        "- `numpy` — `np.ndarray`, rebuilt on append via `np.append` (capped at"
+        " n=100,000 for the append benchmark — O(n) per append)",
         "- `pandas` — `pd.Series`, rebuilt on append (capped at n=100,000 for the"
-        " append benchmark — O(n) per append makes 1M intractable)",
+        " append benchmark — O(n) per append)",
         "- `livefold` — `LiveFold` with `{sum, max, min}` folds",
         "",
         "## Reading these curves",
         "",
         "**Queries:** `livefold` wins above n ≈ 10⁴ and pulls ahead by 2+ orders"
-        " of magnitude at n = 10⁶. Below n ≈ 10³, `naive` and `prefix_sums` win on"
-        " raw constant overhead, but the absolute gap is sub-microsecond. Note that"
-        " `prefix_sums` barely helps once you need max/min — they still scan the"
-        " full range.",
+        " of magnitude at n = 10⁶. `numpy` is competitive on query thanks to"
+        " vectorized C-level reductions but loses to `livefold` at large n because"
+        " every query still does a full scan over the slice. Below n ≈ 10³,"
+        " `naive` and `prefix_sums` win on raw constant overhead, but the absolute"
+        " gap is sub-microsecond. `prefix_sums` barely helps once you need max/min"
+        " — they still scan the full range.",
         "",
         "**Appends:** `naive` and `prefix_sums` append in single-digit nanoseconds"
         " (essentially free, at the timer's resolution floor). `livefold`'s"
-        " amortized cost is roughly flat at ~2 µs. `pandas` rises linearly because"
-        " each append rebuilds the underlying Series — unusable for streaming"
-        " workloads above n ≈ 10⁴.",
+        " amortized cost is roughly flat at ~2 µs. Both `numpy` and `pandas` rise"
+        " linearly because every append rebuilds the underlying buffer — unusable"
+        " for streaming workloads above n ≈ 10⁴.",
         "",
         "**The takeaway:** `livefold` is the only backend that's competitive on"
         " both axes across all scales. `naive`/`prefix_sums` lose on query latency"
-        " above n ≈ 10⁴; `pandas` loses on append latency above n ≈ 10⁴ as well."
+        " above n ≈ 10⁴; `numpy` and `pandas` lose on append latency above n ≈ 10⁴."
         " If your workload mutates the sequence and queries arbitrary ranges,"
         " `livefold` is the curve that doesn't bend the wrong way.",
         "",
