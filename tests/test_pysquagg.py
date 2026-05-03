@@ -268,3 +268,21 @@ def test_pickle_roundtrip():
     assert restored.folded_values == lf.folded_values
     restored.append(9)
     assert restored.folded_values["sum"][-1] == 9
+
+
+def test_multiple_folds_simple():
+    lf = LiveFold(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum, "max": max, "min": min}
+    )
+    assert lf.block_size == 3
+    assert lf.blocks == [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    assert lf.folded_values == {"sum": [3, 12, 21], "max": [2, 5, 8], "min": [0, 3, 6]}
+
+
+def test_multiple_folds_query():
+    lf = LiveFold(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum, "max": max, "min": min}
+    )
+    assert lf.query(1, 5) == {"sum": 15, "max": 5, "min": 1}
+    assert lf.query(2, 5) == {"sum": 14, "max": 5, "min": 2}
+    assert lf.query(0, 8) == {"sum": 36, "max": 8, "min": 0}
