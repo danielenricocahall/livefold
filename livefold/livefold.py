@@ -7,10 +7,17 @@ from typing import Any, Iterable, Callable
 class InvalidRangeException(Exception): ...
 
 
+class InvalidFoldException(Exception): ...
+
+
 class LiveFold(list):
-    def __init__(self, data: Iterable[Any], aggregator_function: Callable):
+    def __init__(self, data: Iterable[Any], folds: dict[str, Callable]):
         super().__init__(data)
-        self.aggregator_function = aggregator_function
+        if not folds:
+            raise InvalidFoldException(
+                "Cannot initialize LiveFold with no `folds` provided"
+            )
+        self.folds = folds
         self._blocks = self.compute_blocks()
 
     @property
@@ -28,18 +35,44 @@ class LiveFold(list):
     @blocks.setter
     def blocks(self, blocks_):
         self._blocks = blocks_
-        if hasattr(self, "_aggregated_values"):
-            del self._aggregated_values
+        if hasattr(self, "_folded_values"):
+            del self._folded_values
 
     @property
-    def aggregated_values(self):
-        if not hasattr(self, "_aggregated_values"):
-            self.aggregated_values = list(map(self.aggregator_function, self.blocks))
-        return self._aggregated_values
+    def folded_values(self):
+        if not hasattr(self, "_folded_values"):
+            self.folded_values = {
+                name: list(map(fn, self.blocks)) for name, fn in self.folds.items()
+            }
+        return self._folded_values
 
-    @aggregated_values.setter
-    def aggregated_values(self, values):
-        self._aggregated_values = values
+    @folded_values.setter
+    def folded_values(self, values):
+        self._folded_values = values
+
+    def _fold_each(self, items) -> dict[str, Any]:
+        return {name: fn(items) for name, fn in self.folds.items()}
+
+    def _block_folds(self, block_index: int) -> dict[str, Any]:
+        return {name: self.folded_values[name][block_index] for name in self.folds}
+
+    def _refold_from(self, block_index: int) -> None:
+        for name, fn in self.folds.items():
+            self.folded_values[name][block_index:] = list(
+                map(fn, self.blocks[block_index:])
+            )
+
+    def _refold_at(self, block_index: int) -> None:
+        for name, fn in self.folds.items():
+            self.folded_values[name][block_index] = fn(self.blocks[block_index])
+
+    def _merge_into_last_block_folds(self, prefix) -> None:
+        for name, fn in self.folds.items():
+            self.folded_values[name][-1] = fn([self.folded_values[name][-1], *prefix])
+
+    def _extend_block_folds(self, new_blocks) -> None:
+        for name, fn in self.folds.items():
+            self.folded_values[name].extend(map(fn, new_blocks))
 
     def compute_blocks(self, start_index: int = 0):
         if not self.block_size:
@@ -62,9 +95,7 @@ class LiveFold(list):
             block_index = __index // block_size
             self.blocks[block_index].insert(__index % block_size, __object)
             self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
-            self.aggregated_values[block_index:] = list(
-                map(self.aggregator_function, self.blocks[block_index:])
-            )
+            self._refold_from(block_index)
 
     def sort(self, *, key=None, reverse=False):
         super().sort(key=key, reverse=reverse)
@@ -78,9 +109,7 @@ class LiveFold(list):
             self.blocks = self.compute_blocks()
         else:
             if (index := self.block_size - len(self.blocks[-1])) > 0:
-                self.aggregated_values[-1] = self.aggregator_function(
-                    [self.aggregated_values[-1], *__iterable[:index]]
-                )
+                self._merge_into_last_block_folds(__iterable[:index])
                 self.blocks[-1] += __iterable[:index]
                 __iterable = __iterable[index:]
             self.__extend_blocks(__iterable)
@@ -91,7 +120,7 @@ class LiveFold(list):
             for i in range(0, len(iterable), self.block_size)
         ]
         self.blocks.extend(new_blocks)
-        self.aggregated_values.extend(map(self.aggregator_function, new_blocks))
+        self._extend_block_folds(new_blocks)
 
     def pop(self, __index=-1):
         block_size = self.block_size
@@ -104,14 +133,13 @@ class LiveFold(list):
             self.blocks[block_index].pop(__index % block_size if __index >= 0 else -1)
             if len(self.blocks[block_index]) == 0:
                 del self.blocks[block_index]
-                del self.aggregated_values[block_index]
+                for name in self.folds:
+                    del self.folded_values[name][block_index]
             else:
                 self.blocks[block_index:] = self.compute_blocks(
                     block_index * block_size
                 )
-                self.aggregated_values[block_index:] = list(
-                    map(self.aggregator_function, self.blocks[block_index:])
-                )
+                self._refold_from(block_index)
         return value
 
     def remove(self, __value):
@@ -125,7 +153,7 @@ class LiveFold(list):
         self.blocks = self.compute_blocks()
 
     def __add__(self, other):
-        return LiveFold(super().__add__(other), self.aggregator_function)
+        return LiveFold(super().__add__(other), self.folds)
 
     def __iadd__(self, other):
         self.extend(other)
@@ -140,20 +168,14 @@ class LiveFold(list):
         else:
             block_index = key // self.block_size
             self.blocks[block_index][key % self.block_size] = value
-            self.aggregated_values[block_index] = self.aggregator_function(
-                self.blocks[block_index]
-            )
+            self._refold_at(block_index)
 
     def __delitem__(self, key):
         super().__delitem__(key)
         self.blocks = self.compute_blocks()
 
-    def iter_blocks(self):
-        for block, agg in zip(self.blocks, self.aggregated_values):
-            yield block, agg
-
     def copy(self):
-        return LiveFold(list(self), self.aggregator_function)
+        return LiveFold(list(self), self.folds)
 
     def __copy__(self):
         return self.copy()
@@ -161,13 +183,13 @@ class LiveFold(list):
     def __deepcopy__(self, memo):
         return LiveFold(
             _copy.deepcopy(list(self), memo),
-            self.aggregator_function,
+            self.folds,
         )
 
     def __reduce__(self):
         return (
             self.__class__,
-            (list(self), self.aggregator_function),
+            (list(self), self.folds),
         )
 
     def query(self, left: int, right: int):
@@ -185,26 +207,25 @@ class LiveFold(list):
         )
         if left_block == right_block:
             if left == left_block_start_index and right == right_block_end_index:
-                return self.aggregated_values[left_block]
-            return self.aggregator_function(self[left : right + 1])
+                return self._block_folds(left_block)
+            return self._fold_each(self[left : right + 1])
         if left != left_block_start_index:
-            initial_value = self.aggregator_function(
-                self[left : left_block_end_index + 1]
-            )
+            initial_value = self._fold_each(self[left : left_block_end_index + 1])
         else:
-            initial_value = self.aggregated_values[left_block]
+            initial_value = self._block_folds(left_block)
         if right != right_block_end_index:
-            final_value = self.aggregator_function(
-                self[right_block_start_index : right + 1]
-            )
+            final_value = self._fold_each(self[right_block_start_index : right + 1])
         else:
-            final_value = self.aggregated_values[right_block]
-        return self.aggregator_function(
-            self.aggregated_values[left_block + 1 : right_block]
-            + [initial_value, final_value]
-        )
+            final_value = self._block_folds(right_block)
+        return {
+            name: fn(
+                self.folded_values[name][left_block + 1 : right_block]
+                + [initial_value[name], final_value[name]]
+            )
+            for name, fn in self.folds.items()
+        }
 
     def clear(self):
         super().clear()
         self.blocks = []
-        self.aggregated_values = []
+        self.folded_values = {name: [] for name in self.folds}
