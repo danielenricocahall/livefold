@@ -158,10 +158,6 @@ class LiveFold(list):
         super().__delitem__(key)
         self.blocks = self.compute_blocks()
 
-    def iter_blocks(self):
-        for block, agg in zip(self.blocks, self.folded_values):
-            yield block, agg
-
     def copy(self):
         return LiveFold(list(self), self.folds)
 
@@ -195,20 +191,41 @@ class LiveFold(list):
         )
         if left_block == right_block:
             if left == left_block_start_index and right == right_block_end_index:
-                return self.folded_values[left_block]
-            return self.folds(self[left : right + 1])
+                return {
+                    fold_name: self.folded_values[fold_name][left_block]
+                    for fold_name in self.folds.keys()
+                }
+            return {
+                fold_name: fold_func(self[left : right + 1])
+                for fold_name, fold_func in self.folds.items()
+            }
         if left != left_block_start_index:
-            initial_value = self.folds(self[left : left_block_end_index + 1])
+            initial_value = {
+                fold_name: fold_func(self[left : left_block_end_index + 1])
+                for fold_name, fold_func in self.folds.items()
+            }
         else:
-            initial_value = self.folded_values[left_block]
+            initial_value = {
+                fold_name: self.folded_values[fold_name][left_block]
+                for fold_name in self.folds.keys()
+            }
         if right != right_block_end_index:
-            final_value = self.folds(self[right_block_start_index : right + 1])
+            final_value = {
+                fold_name: fold_func(self[right_block_start_index : right + 1])
+                for fold_name, fold_func in self.folds.items()
+            }
         else:
-            final_value = self.folded_values[right_block]
-        return self.folds(
-            self.folded_values[left_block + 1 : right_block]
-            + [initial_value, final_value]
-        )
+            final_value = {
+                fold_name: self.folded_values[fold_name][right_block]
+                for fold_name in self.folds.keys()
+            }
+        return {
+            fold_name: fold_func(
+                self.folded_values[fold_name][left_block + 1 : right_block]
+                + [initial_value[fold_name], final_value[fold_name]]
+            )
+            for fold_name, fold_func in self.folds.items()
+        }
 
     def clear(self):
         super().clear()

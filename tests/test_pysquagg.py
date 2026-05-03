@@ -114,22 +114,22 @@ def test_remove_element_not_present():
 
 def test_compute_aggregate_whole_blocks():
     lf = LiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum})
-    assert lf.query(0, 5) == 21
+    assert lf.query(0, 5) == {"sum": 21}
 
 
 def test_compute_aggregate_partial_blocks_left():
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
-    assert lf.query(1, 5) == 15
+    assert lf.query(1, 5) == {"sum": 15}
 
 
 def test_compute_aggregate_partial_blocks_right():
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
-    assert lf.query(3, 7) == 25
+    assert lf.query(3, 7) == {"sum": 25}
 
 
 def test_compute_aggregate_partial_blocks_both_sides():
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
-    assert lf.query(1, 6) == 21
+    assert lf.query(1, 6) == {"sum": 21}
 
 
 @pytest.mark.parametrize("left,right", [(0, 0), (1, 0), (0, 10), (-1, 5)])
@@ -213,21 +213,12 @@ def test_iter_yields_elements():
     assert 4 in lf
 
 
-def test_iter_blocks():
-    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
-    assert list(lf.iter_blocks()) == [
-        ([0, 1, 2], 3),
-        ([3, 4, 5], 12),
-        ([6, 7, 8], 21),
-    ]
-
-
 def test_query_same_block_partial():
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
-    assert lf.query(1, 2) == 3
-    assert lf.query(0, 1) == 1
-    assert lf.query(3, 5) == 12
-    assert lf.query(4, 5) == 9
+    assert lf.query(1, 2) == {"sum": 3}
+    assert lf.query(0, 1) == {"sum": 1}
+    assert lf.query(3, 5) == {"sum": 12}
+    assert lf.query(4, 5) == {"sum": 9}
 
 
 def test_delitem():
