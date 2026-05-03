@@ -292,3 +292,51 @@ def test_multiple_folds_query():
     assert lf.query(1, 5) == {"sum": 15, "max": 5, "min": 1}
     assert lf.query(2, 5) == {"sum": 14, "max": 5, "min": 2}
     assert lf.query(0, 8) == {"sum": 36, "max": 8, "min": 0}
+
+
+def test_multiple_folds_insert():
+    lf = LiveFold([1, 2, 3, 5, 6, 7], folds={"sum": sum, "max": max, "min": min})
+    assert lf.folded_values == {"sum": [3, 8, 13], "max": [2, 5, 7], "min": [1, 3, 6]}
+    lf.insert(3, 4)
+    assert lf.blocks == [[1, 2], [3, 4], [5, 6], [7]]
+    assert lf.folded_values == {
+        "sum": [3, 7, 11, 7],
+        "max": [2, 4, 6, 7],
+        "min": [1, 3, 5, 7],
+    }
+
+
+def test_multiple_folds_pop():
+    lf = LiveFold([1, 2, 3, 4, 5], folds={"sum": sum, "max": max, "min": min})
+    assert lf.folded_values == {"sum": [3, 7, 5], "max": [2, 4, 5], "min": [1, 3, 5]}
+    val = lf.pop(2)
+    assert val == 3
+    assert lf.blocks == [[1, 2], [4, 5]]
+    assert lf.folded_values == {"sum": [3, 9], "max": [2, 5], "min": [1, 4]}
+
+
+def test_multiple_folds_extend_with_merge():
+    lf = LiveFold([1, 2, 3, 4, 5], folds={"sum": sum, "max": max, "min": min})
+    assert lf.blocks == [[1, 2], [3, 4], [5]]
+    assert lf.folded_values == {"sum": [3, 7, 5], "max": [2, 4, 5], "min": [1, 3, 5]}
+    lf.extend([6, 7, 8])
+    assert lf.blocks == [[1, 2], [3, 4], [5, 6], [7, 8]]
+    assert lf.folded_values == {
+        "sum": [3, 7, 11, 15],
+        "max": [2, 4, 6, 8],
+        "min": [1, 3, 5, 7],
+    }
+
+
+def test_multiple_folds_set_item():
+    lf = LiveFold(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum, "max": max, "min": min}
+    )
+    assert lf.folded_values == {"sum": [3, 12, 21], "max": [2, 5, 8], "min": [0, 3, 6]}
+    lf[3] = -1
+    assert lf.blocks == [[0, 1, 2], [-1, 4, 5], [6, 7, 8]]
+    assert lf.folded_values == {
+        "sum": [3, 8, 21],
+        "max": [2, 5, 8],
+        "min": [0, -1, 6],
+    }
