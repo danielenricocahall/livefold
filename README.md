@@ -6,7 +6,7 @@
 
 > A primitive for online sequential aggregation in Python.
 > Maintain a mutable numeric sequence; query exact aggregates over any range
-> in **O(√n)**; plug in any associative reducer (any monoid — commutativity not required).
+> in **O(√n)**; plug in any associative reducer (any monoid).
 
 ## When to reach for it
 
@@ -17,7 +17,7 @@
 | Fixed-width rolling windows | `pandas.rolling()` / `polars.rolling()` |
 | **Mutable series, arbitrary range queries, multi-fold** | **livefold** |
 
-Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows — request latencies, sensor readings, trade prices, telemetry events — `livefold` fits.
+Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows (e.g., request latencies, sensor readings, trade prices, telemetry events),`livefold` fits.
 
 ## Quickstart
 
@@ -55,9 +55,6 @@ Two runnable Streamlit demos in [`examples/`](./examples):
 - **[`system_metrics/`](./examples/system_metrics)** — live `psutil`-driven CPU/memory dashboard with arbitrary-range aggregate queries. Runs entirely offline.
 - **[`crypto_ticks/`](./examples/crypto_ticks)** — synthetic BTC/USD tick stream with high/low/avg-price queries. Includes a drop-in recipe for real Binance ticks.
 
-```bash
-uv run --group demo streamlit run examples/system_metrics/app.py
-```
 
 ## API
 
@@ -85,7 +82,7 @@ For the full derivation, complexity analysis, and worked examples, see the [orig
 
 ## Constraints
 
-- Folds must be **associative** (i.e., form a monoid). Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too. `sum`, `max`, `min`, `product`, `gcd`, bitwise `or`/`and`/`xor`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) all qualify. `len` does not — applying `len` to a list of pre-computed counts gives the number of blocks, not the total count.
+- Folds must be **associative** (i.e., form a [monoid](https://en.wikipedia.org/wiki/Monoid)). `sum`, `max`, `min`, `product`, `gcd`, bitwise `or`/`and`/`xor`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) all qualify. Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too. 
 - **Not thread-safe.** Single-process, single-thread workloads only.
 
 ## Contributing
