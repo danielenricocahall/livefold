@@ -1,6 +1,6 @@
 import copy as _copy
 
-from math import sqrt, floor
+from math import isqrt
 from typing import Any, Iterable, Callable
 
 
@@ -22,11 +22,11 @@ class LiveFold(list):
 
     @property
     def block_size(self):
-        return floor(sqrt(len(self)))
+        return isqrt(len(self))
 
     @property
     def block_count(self):
-        return floor(len(self) / self.block_size)
+        return len(self) // self.block_size
 
     @property
     def blocks(self):
@@ -75,11 +75,11 @@ class LiveFold(list):
             self.folded_values[name].extend(map(fn, new_blocks))
 
     def compute_blocks(self, start_index: int = 0):
-        if not self.block_size:
+        block_size = self.block_size
+        if not block_size:
             return []
         return [
-            self[i : i + self.block_size]
-            for i in range(start_index, len(self), self.block_size)
+            self[i : i + block_size] for i in range(start_index, len(self), block_size)
         ]
 
     def append(self, __object):
@@ -93,7 +93,6 @@ class LiveFold(list):
             self.blocks = self.compute_blocks()
         else:
             block_index = __index // block_size
-            self.blocks[block_index].insert(__index % block_size, __object)
             self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
             self._refold_from(block_index)
 
@@ -102,22 +101,23 @@ class LiveFold(list):
         self.blocks = self.compute_blocks()
 
     def extend(self, __iterable):
+        __iterable = list(__iterable)
         block_size = self.block_size
         super().extend(__iterable)
         new_block_size = self.block_size
         if new_block_size != block_size:
             self.blocks = self.compute_blocks()
         else:
-            if (index := self.block_size - len(self.blocks[-1])) > 0:
+            if (index := block_size - len(self.blocks[-1])) > 0:
                 self._merge_into_last_block_folds(__iterable[:index])
                 self.blocks[-1] += __iterable[:index]
                 __iterable = __iterable[index:]
             self.__extend_blocks(__iterable)
 
     def __extend_blocks(self, iterable):
+        block_size = self.block_size
         new_blocks = [
-            iterable[i : i + self.block_size]
-            for i in range(0, len(iterable), self.block_size)
+            iterable[i : i + block_size] for i in range(0, len(iterable), block_size)
         ]
         self.blocks.extend(new_blocks)
         self._extend_block_folds(new_blocks)
@@ -166,8 +166,9 @@ class LiveFold(list):
             # requires more thought for all edge cases
             self.blocks = self.compute_blocks()
         else:
-            block_index = key // self.block_size
-            self.blocks[block_index][key % self.block_size] = value
+            block_size = self.block_size
+            block_index = key // block_size
+            self.blocks[block_index][key % block_size] = value
             self._refold_at(block_index)
 
     def __delitem__(self, key):
@@ -197,11 +198,12 @@ class LiveFold(list):
             raise InvalidRangeException(
                 f"Invalid range of {left} - {right}. Please supply a valid range!"
             )
-        left_block = left // self.block_size
-        right_block = right // self.block_size
-        left_block_start_index = left_block * self.block_size
+        block_size = self.block_size
+        left_block = left // block_size
+        right_block = right // block_size
+        left_block_start_index = left_block * block_size
         left_block_end_index = left_block_start_index + len(self.blocks[left_block]) - 1
-        right_block_start_index = right_block * self.block_size
+        right_block_start_index = right_block * block_size
         right_block_end_index = (
             right_block_start_index + len(self.blocks[right_block]) - 1
         )
