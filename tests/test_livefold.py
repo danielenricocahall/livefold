@@ -26,6 +26,13 @@ def test_extend():
     assert lf.folded_values == {"sum": [6, 15, 24]}
 
 
+def test_extend_with_generator():
+    lf = LiveFold([1, 2, 3, 4, 5], folds={"sum": sum})
+    lf.extend(x for x in [6, 7, 8, 9])
+    assert lf.block_size == 3
+    assert lf.folded_values == {"sum": [6, 15, 24]}
+
+
 def test_insert_no_change_to_block_size():
     lf = LiveFold([1, 2, 3, 5, 6, 7], folds={"sum": sum})
     assert lf.folded_values == {"sum": [3, 8, 13]}
