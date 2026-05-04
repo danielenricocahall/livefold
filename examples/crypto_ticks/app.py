@@ -72,8 +72,7 @@ def reset() -> None:
         "last_price",
         "start",
         "rng",
-        "window_state",
-        "interacted",
+        "window_slider",
     ):
         st.session_state.pop(key, None)
 
@@ -129,27 +128,24 @@ if n < 2:
     st.stop()
 
 t_min, t_max = float(ts[0]), float(ts[-1])
-default = (max(t_min, t_max - 30), t_max)
-if st.session_state.get("interacted") and "window_state" in st.session_state:
-    prev = st.session_state["window_state"]
-    initial = (
-        max(t_min, min(t_max, prev[0])),
-        max(t_min, min(t_max, prev[1])),
-    )
+# Initialize once; on subsequent reruns clamp the persisted value to
+# current bounds without passing value= (which would reset the widget).
+if "window_slider" not in st.session_state:
+    st.session_state["window_slider"] = (max(t_min, t_max - 30), t_max)
 else:
-    initial = default
+    lo, hi = st.session_state["window_slider"]
+    st.session_state["window_slider"] = (
+        max(t_min, min(t_max, lo)),
+        max(t_min, min(t_max, hi)),
+    )
 
 window = st.slider(
     "Range to aggregate (seconds)",
     min_value=t_min,
     max_value=t_max,
-    value=initial,
     step=1.0,
+    key="window_slider",
 )
-
-if window != initial:
-    st.session_state["interacted"] = True
-st.session_state["window_state"] = window
 
 left_idx = bisect.bisect_left(ts, window[0])
 right_idx = bisect.bisect_right(ts, window[1]) - 1
