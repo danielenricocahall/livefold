@@ -1,6 +1,6 @@
 import copy as _copy
 
-from math import sqrt, floor
+from math import isqrt
 from typing import Any, Iterable, Callable
 
 
@@ -22,11 +22,11 @@ class LiveFold(list):
 
     @property
     def block_size(self):
-        return floor(sqrt(len(self)))
+        return isqrt(len(self))
 
     @property
     def block_count(self):
-        return floor(len(self) / self.block_size)
+        return len(self) // self.block_size
 
     @property
     def blocks(self):
