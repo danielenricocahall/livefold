@@ -65,7 +65,7 @@ Some preliminary benchmarking can be conducted from scripts in the `benchmarks` 
 As derived from a 2023 Macbook Pro M2, 16GB RAM.
 
 # Constraints
-The aggregator functions need to be associative and commutative, and the data structure is not thread-safe.
+The aggregator functions need to be **associative** (i.e., form a monoid). They do *not* need to be commutative — string concatenation, matrix multiplication, and other ordered monoids are valid. The data structure is not thread-safe.
 
 
 # TODO

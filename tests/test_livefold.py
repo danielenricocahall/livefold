@@ -340,3 +340,62 @@ def test_multiple_folds_set_item():
         "max": [2, 5, 8],
         "min": [0, -1, 6],
     }
+
+
+# String concatenation is associative but NOT commutative — locks in
+# that the multi-block combine in query() preserves positional order.
+# Under the previous (reordering) implementation, query(1, 7) over
+# "abcdefghi" returned "defbcgh" instead of "bcdefgh".
+
+
+def test_non_commutative_fold_simple():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    assert lf.blocks == [
+        ["a", "b", "c"],
+        ["d", "e", "f"],
+        ["g", "h", "i"],
+    ]
+    assert lf.folded_values == {"concat": ["abc", "def", "ghi"]}
+
+
+def test_non_commutative_fold_full_range():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    assert lf.query(0, 8) == {"concat": "abcdefghi"}
+
+
+def test_non_commutative_fold_partial_left():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    assert lf.query(1, 8) == {"concat": "bcdefghi"}
+
+
+def test_non_commutative_fold_partial_right():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    assert lf.query(0, 7) == {"concat": "abcdefgh"}
+
+
+def test_non_commutative_fold_partial_both_sides():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    assert lf.query(1, 7) == {"concat": "bcdefgh"}
+    assert lf.query(2, 6) == {"concat": "cdefg"}
+
+
+def test_non_commutative_fold_within_single_block():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    assert lf.query(0, 2) == {"concat": "abc"}
+    assert lf.query(3, 5) == {"concat": "def"}
+    assert lf.query(4, 5) == {"concat": "ef"}
+
+
+def test_non_commutative_fold_after_mutation():
+    chars = list("abcdefghi")
+    lf = LiveFold(chars, folds={"concat": "".join})
+    lf.append("j")
+    assert lf.query(0, 9) == {"concat": "abcdefghij"}
+    lf[0] = "Z"
+    assert lf.query(0, 9) == {"concat": "Zbcdefghij"}
