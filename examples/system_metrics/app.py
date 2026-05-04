@@ -47,7 +47,7 @@ def append_reading(metric: str) -> None:
 
 
 def reset() -> None:
-    for key in ("lf", "timestamps", "start", "window_slider"):
+    for key in ("lf", "timestamps", "start", "window_state"):
         st.session_state.pop(key, None)
 
 
@@ -100,14 +100,19 @@ if n < 2:
     st.stop()
 
 t_min, t_max = float(ts[0]), float(ts[-1])
+prev = st.session_state.get("window_state", (t_min, t_max))
+clamped = (
+    max(t_min, min(t_max, prev[0])),
+    max(t_min, min(t_max, prev[1])),
+)
 window = st.slider(
     "Range to aggregate (seconds since start)",
     min_value=t_min,
     max_value=t_max,
-    value=(t_min, t_max),
+    value=clamped,
     step=1.0,
-    key="window_slider",
 )
+st.session_state["window_state"] = window
 
 left_idx = bisect.bisect_left(ts, window[0])
 right_idx = bisect.bisect_right(ts, window[1]) - 1
