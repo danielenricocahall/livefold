@@ -342,12 +342,6 @@ def test_multiple_folds_set_item():
     }
 
 
-# String concatenation is associative but NOT commutative — locks in
-# that the multi-block combine in query() preserves positional order.
-# Under the previous (reordering) implementation, query(1, 7) over
-# "abcdefghi" returned "defbcgh" instead of "bcdefgh".
-
-
 def test_non_commutative_fold_simple():
     chars = list("abcdefghi")
     lf = LiveFold(chars, folds={"concat": "".join})
