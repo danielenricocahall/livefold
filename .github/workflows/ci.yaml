@@ -1,4 +1,4 @@
-name: PySquagg CI
+name: LiveFold CI
 
 on:
   push:
