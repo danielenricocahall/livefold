@@ -66,7 +66,15 @@ def append_ticks(rate_multiplier: int) -> None:
 
 
 def reset() -> None:
-    for key in ("lf", "timestamps", "last_price", "start", "rng", "window_state"):
+    for key in (
+        "lf",
+        "timestamps",
+        "last_price",
+        "start",
+        "rng",
+        "window_state",
+        "interacted",
+    ):
         st.session_state.pop(key, None)
 
 
@@ -122,18 +130,25 @@ if n < 2:
 
 t_min, t_max = float(ts[0]), float(ts[-1])
 default = (max(t_min, t_max - 30), t_max)
-prev = st.session_state.get("window_state", default)
-clamped = (
-    max(t_min, min(t_max, prev[0])),
-    max(t_min, min(t_max, prev[1])),
-)
+if st.session_state.get("interacted") and "window_state" in st.session_state:
+    prev = st.session_state["window_state"]
+    initial = (
+        max(t_min, min(t_max, prev[0])),
+        max(t_min, min(t_max, prev[1])),
+    )
+else:
+    initial = default
+
 window = st.slider(
     "Range to aggregate (seconds)",
     min_value=t_min,
     max_value=t_max,
-    value=clamped,
+    value=initial,
     step=1.0,
 )
+
+if window != initial:
+    st.session_state["interacted"] = True
 st.session_state["window_state"] = window
 
 left_idx = bisect.bisect_left(ts, window[0])
