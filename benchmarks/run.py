@@ -187,7 +187,7 @@ def write_results(
         render_table(append_results),
         "",
     ]
-    (output_dir / "results.md").write_text("\n".join(md))
+    (output_dir / "README.md").write_text("\n".join(md))
 
 
 def main() -> None:
@@ -195,7 +195,7 @@ def main() -> None:
     append_results = run_append_workload()
     out = Path(__file__).parent
     write_results(query_results, append_results, out)
-    print(f"\nWrote {out / 'results.md'} and plots to {out / 'plots'}")
+    print(f"\nWrote {out / 'README.md'} and plots to {out / 'plots'}")
 
 
 if __name__ == "__main__":

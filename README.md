@@ -1,77 +1,93 @@
-# Overview
+# livefold
 
-[![Build Status](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielenricocahall/pysquagg/actions/workflows/ci.yaml/badge.svg)
-[![Supported Versions](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/danielenricocahall/pysquagg/blob/main/LICENSE)
+[![Build Status](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml)
+[![Supported Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/danielenricocahall/livefold/blob/main/pyproject.toml)
+[![license](https://img.shields.io/github/license/danielenricocahall/livefold.svg)](https://github.com/danielenricocahall/livefold/blob/main/LICENSE)
 
- This is `pysquagg`, a library containing a data structure intended for expediant computation of aggregations on a collection using Square Root Decomposition. The data structure is an extension of [Mo's Algorithm](https://www.geeksforgeeks.org/mos-algorithm-query-square-root-decomposition-set-1-introduction/). Please see more details in the associated [blog post](https://open.substack.com/pub/dannycahall/p/pysquagg-square-root-decomposition?r=1swlpp&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true).
- 
-# Motivation
-The principles behind Mo's Algorithm is interesting and useful, but the implementation is a bit cumbersome. This library is intended to make it easier to use the algorithm in Python, plus introduce dynamic behavior, such that a collection can be modified after the data structure is created, and the corresponding blocks + aggregates are updated accordingly.
+> A primitive for online sequential aggregation in Python.
+> Maintain a mutable numeric sequence; query exact aggregates over any range
+> in **O(√n)**; plug in any associative reducer (any monoid — commutativity not required).
 
-# Details
-The list supplied is split into $\left\lfloor \frac{n}{\left\lfloor \sqrt{n} \right\rfloor} \right\rfloor$ blocks of size $\sqrt{n}$, and the aggregate (based on the supplied aggregation function) is computed for each block. When the`PySquagg` object is queried with a valid start and end index:
-- Pre-computed aggregations for all blocks that are entirely within the range are collected
-- Elements not fully contained within a block are iterated over and the aggregation function is applied to them
-- The pre-computed aggregations and newly computed aggregations are combined and returned
+## When to reach for it
 
-The end result is a `query` method that is O($\sqrt{n}$), compared to O(n) for a naive implementation.
+| Need | Use |
+|---|---|
+| Immutable series, range aggregates | Prefix sums |
+| Frequent point updates, log-time queries | Segment tree / Fenwick tree |
+| Fixed-width rolling windows | `pandas.rolling()` / `polars.rolling()` |
+| **Mutable series, arbitrary range queries, multi-fold** | **livefold** |
 
-Additionally, the `PySquagg` object can be modified after creation (e.g; `append`, `extend`, `pop`), and the blocks are updated accordingly to always be of size $\sqrt{n}$. The aggregates are also computed on the updated blocks.
+Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows — request latencies, sensor readings, trade prices, telemetry events — `livefold` fits.
 
+## Quickstart
 
-# API & Usage
-The API for using `pysquagg` is simple, as we're only providing a single class `PySquagg`:
-
-```python
-from livefold.livefold import PySquagg
-
-pysquagg_instance = PySquagg([1, 2, 3, 4, 5, 6], aggregator_function=sum)
-pysquagg_instance.blocks  # will print [[1, 2], [3, 4], [5, 6]]
-pysquagg_instance.aggregated_values  # will print [3, 7, 11]
-pysquagg_instance.query(0, 5)  # will print 21
-pysquagg_instance += [7, 8]
-pysquagg_instance.blocks  # will print [[1, 2], [3, 4], [5, 6], [7, 8]]
-pysquagg_instance.append(9)
-pysquagg_instance.blocks  # will print [[1, 2, 3], [4, 5, 6], [7, 8, 9]] - the block size has been recomputed from 2 -> 3
-pysquagg_instance.aggregated_values  # will print [6, 15, 24]
-pysquagg_instance.query(0, 8)  # will print 45
-pysquagg_instance.pop()
-pysquagg_instance[2] = -1
-pysquagg_instance.blocks  # will print [[1, 2], [-1, 4], [5, 6], [7, 8]] - block_size has dropped down from 3 -> 2
+```bash
+pip install livefold
 ```
 
-# Performance Characteristics
+```python
+from livefold import LiveFold
 
-## Complexity
+lf = LiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum, "max": max, "min": min})
 
-| Operation | Average Case Time Complexity | Worst Case Time Complexity |
-|-----------|------------------------------|----------------|
-| `query`   | O($\sqrt{n}$)                | O($\sqrt{n}$)  |
-| `append`  | O(1)                         | O(n)           |
-| `insert`  | O(n)                         | O(n)           |
-| `pop`     | O(n)                         | O(n)           |
-| `extend` | O(m)                         | O(n + m)       |
+lf.append(7)
+lf.query(0, 5)
+# → {"sum": 21, "max": 6, "min": 1}
 
-The main reason for other operations being linear in the worst case is the fact that when the collection is modified, the blocks and aggregates need to be recomputed when the square root of the size of the collection changes. Furthermore, as `PySquagg` is a subclass of list, some of these performance characteristics are inherent.
-## Benchmarks
+# Mutate freely; aggregates stay current
+lf[2] = -1
+lf.query(2, 5)
+# → {"sum": 9, "max": 6, "min": -1}
+```
 
-Some preliminary benchmarking can be conducted from scripts in the `benchmarks` directory. One highlight from comparing `query` to performing computations on the arbitrary slices (using `sum` as the aggregator function) is:
+## Performance
 
-| Operation | PySquagg (s) |  Naive (s) |
-|-----------|--------------|------------|
-| `query`   | 0.032        | 1.48      |
+![Query latency vs collection size](./benchmarks/plots/query_latency.png)
 
-As derived from a 2023 Macbook Pro M2, 16GB RAM.
+At n = 10⁷, `livefold`'s median range query is **69 µs vs naive Python's 29 ms** (~400× faster), and append cost stays **flat at 2 µs across all n** while every other backend with a competitive query path (numpy, pandas) degrades linearly on appends. `livefold` is the only line that doesn't bend the wrong way on either axis.
 
-# Constraints
-The aggregator functions need to be **associative** (i.e., form a monoid). They do *not* need to be commutative — string concatenation, matrix multiplication, and other ordered monoids are valid. The data structure is not thread-safe.
+Full methodology, append benchmarks, comparison against four backends, and the reproduction script: [`benchmarks/`](./benchmarks).
 
+## Examples
 
-# TODO
-- [ ] Identify if we can reduce the runtime of some operations to be sublinear
-- [ ] Perform more extensive benchmarking
-- [ ] Incorporate a mechanism for combining aggregator functions, if someone adds two `PySquagg` objects
-- [ ] Add a `LoosePySquagg` class that does not strictly enforce the sqrt(n), which may have some performance benefits for certain operations such as `insert` and `pop` which currently require recomputation of blocks and aggregates
+Two runnable Streamlit demos in [`examples/`](./examples):
 
-> 💡 Interested in contributing? Check out the [Local Development & Contributions Guide](https://github.com/danielenricocahall/pysquagg/blob/main/CONTRIBUTING.md).
+- **[`system_metrics/`](./examples/system_metrics)** — live `psutil`-driven CPU/memory dashboard with arbitrary-range aggregate queries. Runs entirely offline.
+- **[`crypto_ticks/`](./examples/crypto_ticks)** — synthetic BTC/USD tick stream with high/low/avg-price queries. Includes a drop-in recipe for real Binance ticks.
+
+```bash
+uv run --group demo streamlit run examples/system_metrics/app.py
+```
+
+## API
+
+```python
+LiveFold(data: Iterable, folds: dict[str, Callable])
+```
+
+| Member | Returns | Notes |
+|---|---|---|
+| `lf.append(x)` | `None` | Amortized O(1) |
+| `lf.query(left, right)` | `dict[str, Any]` | O(√n); inclusive bounds |
+| `lf.blocks` | `list[list]` | Underlying √n-sized blocks |
+| `lf.folded_values` | `dict[str, list]` | Per-fold, per-block aggregates |
+| `lf.insert / pop / extend / remove / sort / ...` | — | Standard `list` methods; blocks and folds updated in place |
+
+`LiveFold` subclasses `list`, so it's a drop-in for any code that expected a plain list — until you start calling `query`.
+
+## How it works
+
+`LiveFold` splits its underlying list into ⌊√n⌋ blocks of size √n, precomputes the configured folds for each block, and updates them incrementally on mutation. A `query(left, right)` walks at most two partial blocks plus the precomputed folds for whole-block spans in between — touching roughly 2√n elements per fold regardless of n. Mo's algorithm with mutability and a dict-shaped output.
+
+For the full derivation, complexity analysis, and worked examples, see the [original blog post](https://open.substack.com/pub/dannycahall/p/pysquagg-square-root-decomposition?r=1swlpp&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true).
+
+> *Note: the blog post predates the rebrand from `pysquagg` and uses the old singular `aggregator_function=` API. The math and structural choices are unchanged; only the package name and the `folds={"name": fn, ...}` dict shape have evolved.*
+
+## Constraints
+
+- Folds must be **associative** (i.e., form a monoid). Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too. `sum`, `max`, `min`, `product`, `gcd`, bitwise `or`/`and`/`xor`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) all qualify. `len` does not — applying `len` to a list of pre-computed counts gives the number of blocks, not the total count.
+- **Not thread-safe.** Single-process, single-thread workloads only.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
