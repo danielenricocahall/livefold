@@ -1,5 +1,7 @@
 # livefold
 
+*live + fold — incremental folds over a mutable sequence.*
+
 [![Build Status](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml)
 [![Supported Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/danielenricocahall/livefold/blob/main/pyproject.toml)
 [![license](https://img.shields.io/github/license/danielenricocahall/livefold.svg)](https://github.com/danielenricocahall/livefold/blob/main/LICENSE)
