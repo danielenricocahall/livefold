@@ -4,11 +4,12 @@ import pickle
 import time
 
 import pytest
-from livefold import LiveFold, InvalidRangeException
-from livefold.livefold import (
+from livefold import (
+    LiveFold,
+    TimeIndexedLiveFold,
+    InvalidRangeException,
     InvalidFoldException,
     MonotonicityError,
-    TimeIndexedLiveFold,
 )
 
 
