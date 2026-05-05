@@ -486,6 +486,12 @@ def test_timestamp_live_fold_clear():
     assert len(lf.timestamps) == 0
 
 
+def test_timestamp_live_fold_repr_includes_data_and_timestamps():
+    lf = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    r = repr(lf)
+    assert r == "TimeIndexedLiveFold([1, 2, 3], timestamps=[1.0, 2.0, 3.0])"
+
+
 def test_timestamp_live_fold_query_time_range(freezer):
     designated_date = "2025-01-01"
     freezer.move_to(designated_date)
