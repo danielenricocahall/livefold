@@ -19,7 +19,7 @@
 | Fixed-width rolling windows | `pandas.rolling()` / `polars.rolling()` |
 | **Mutable series, arbitrary range queries, multi-fold** | **livefold** |
 
-Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows (e.g., request latencies, sensor readings, trade prices, telemetry events),`livefold` fits.
+Common shapes: request latencies, sensor readings, trade prices, telemetry events.
 
 ## Quickstart
 
@@ -76,7 +76,7 @@ LiveFold(data: Iterable, folds: dict[str, Callable])
 
 ## Time-indexed queries: `TimeIndexedLiveFold`
 
-For monotonic streams where you want to query by *time* instead of *index*, `TimeIndexedLiveFold` carries a parallel timestamp per element and exposes `query_time_range`. Bisect maps timestamps to indices in O(log n), so overall query cost stays O(√n).
+For monotonic streams where you want to query by *time* instead of *index*, `TimeIndexedLiveFold` carries a parallel timestamp per element and exposes `query_time_range` — still O(√n).
 
 ```python
 from livefold import TimeIndexedLiveFold
@@ -133,9 +133,9 @@ A fold is a single-argument callable `fn(items) -> result` that:
 
 1. Accepts an **iterable** of elements (or, when called internally to combine block results, an iterable of prior fold results) and returns a single value.
 2. Is **associative**: `fn([fn([a, b]), fn([c, d])]) == fn([a, b, c, d])`. This lets `query` combine precomputed block-level folds with the partial folds at each end.
-3. Returns a value of the same shape it accepts as elements — i.e., feeding the result back through `fn` together with other results must work. `sum`, `max`, `min`, `"".join`, `math.prod`, `functools.reduce(operator.and_, ...)` all satisfy this; `len` does not (it returns an `int` regardless of input shape, so `len([len(block_a), len(block_b)])` doesn't give the total element count).
+3. Returns a value of the same shape it accepts as elements — i.e., feeding the result back through `fn` together with other results must work. `len` is a common-but-broken choice: it returns an `int` regardless of input shape, so `len([len(block_a), len(block_b)])` gives `2`, not the total element count.
 
-Builtin and stdlib examples that satisfy the contract: `sum`, `max`, `min`, `math.prod`, `math.gcd` (via `functools.reduce`), bitwise `or`/`and`/`xor`, `"".join`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) wrapped in a fold-shaped callable. Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too.
+Examples that satisfy the contract: `sum`, `max`, `min`, `math.prod`, `math.gcd` (via `functools.reduce`), bitwise `or`/`and`/`xor`, `"".join`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) wrapped in a fold-shaped callable. Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too.
 
 ## Constraints
 
