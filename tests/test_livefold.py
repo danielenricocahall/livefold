@@ -1,9 +1,10 @@
 import copy
+import datetime
 import pickle
 
 import pytest
 from livefold import LiveFold, InvalidRangeException
-from livefold.livefold import InvalidFoldException
+from livefold.livefold import InvalidFoldException, TimeOrderedLiveFold
 
 
 def test_basic():
@@ -400,3 +401,30 @@ def test_non_commutative_fold_after_mutation():
     assert lf.query(0, 9) == {"concat": "abcdefghij"}
     lf[0] = "Z"
     assert lf.query(0, 9) == {"concat": "Zbcdefghij"}
+
+
+def test_timestamp_live_fold_append(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeOrderedLiveFold([1, 2, 3], folds={"sum": sum})
+    lf.append(4)
+    assert len(lf.timestamps) == 4
+    assert lf.timestamps == [designated_date_epoch] * 4
+    assert lf.blocks == [[1, 2], [3, 4]]
+
+
+def test_timestamp_live_fold_pop(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeOrderedLiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum})
+    lf.pop(3)
+    assert len(lf) == 5
+    assert len(lf.timestamps) == 5
+    assert lf.timestamps == [designated_date_epoch] * 5
+    assert lf.blocks == [[1, 2], [3, 5], [6]]

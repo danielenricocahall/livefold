@@ -17,6 +17,7 @@ license-files = ["LICENSE"]
 dev = [
     "pre-commit>=4.1.0",
     "pytest>=9.0.3",
+    "pytest-freezer>=0.4.9",
     "ruff>=0.9.5",
 ]
 bench = [

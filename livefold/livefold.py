@@ -1,4 +1,5 @@
 import copy as _copy
+import time
 
 from math import isqrt
 from typing import Any, Iterable, Callable
@@ -232,3 +233,25 @@ class LiveFold(list):
         super().clear()
         self.blocks = []
         self.folded_values = {name: [] for name in self.folds}
+
+
+class TimeOrderedLiveFold(LiveFold):
+    def __init__(self, data: Iterable[Any], folds: dict[str, Callable]):
+        self._timestamps: list[float] = []
+        if data:
+            self.timestamps.extend([time.time() for _ in data])
+        super().__init__(data, folds)
+
+    @property
+    def timestamps(self):
+        return self._timestamps
+
+    def append(self, __object, timestamp: float | None = None):
+        if not timestamp:
+            timestamp = time.time()
+        self.timestamps.append(timestamp)
+        super().append(__object)
+
+    def pop(self, __index=-1):
+        super().pop(__index)
+        self.timestamps.pop(__index)
