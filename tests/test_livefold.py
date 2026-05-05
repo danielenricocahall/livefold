@@ -146,11 +146,45 @@ def test_compute_aggregate_partial_blocks_both_sides():
     assert lf.query(1, 6) == {"sum": 21}
 
 
-@pytest.mark.parametrize("left,right", [(0, 0), (1, 0), (0, 10), (-1, 5)])
+@pytest.mark.parametrize("left,right", [(1, 0), (0, 9), (0, 10), (-1, 5)])
 def test_compute_blocks_invalid_range(left, right):
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
     with pytest.raises(InvalidRangeException):
         lf.query(left, right)
+
+
+def test_query_single_element():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum, "max": max})
+    assert lf.query(3, 3) == {"sum": 3, "max": 3}
+    assert lf.query(0, 0) == {"sum": 0, "max": 0}
+    assert lf.query(8, 8) == {"sum": 8, "max": 8}
+
+
+def test_setitem_negative_index():
+    lf = LiveFold([1, 2, 3, 4, 5], folds={"sum": sum})
+    # block_size=2, blocks=[[1,2],[3,4],[5]]
+    lf[-1] = 99
+    assert list(lf) == [1, 2, 3, 4, 99]
+    assert lf.blocks == [[1, 2], [3, 4], [99]]
+    assert lf.folded_values == {"sum": [3, 7, 99]}
+
+    lf[-2] = -1
+    assert list(lf) == [1, 2, 3, -1, 99]
+    assert lf.blocks == [[1, 2], [3, -1], [99]]
+    assert lf.folded_values == {"sum": [3, 2, 99]}
+
+
+def test_block_count_empty():
+    lf = LiveFold([], folds={"sum": sum})
+    assert lf.block_count == 0
+
+
+def test_delitem_int():
+    lf = LiveFold([1, 2, 3, 4, 5], folds={"sum": sum})
+    del lf[2]
+    assert list(lf) == [1, 2, 4, 5]
+    assert lf.blocks == [[1, 2], [4, 5]]
+    assert lf.folded_values == {"sum": [3, 9]}
 
 
 def test_empty_folds():
@@ -484,6 +518,23 @@ def test_timestamp_live_fold_clear():
     lf.clear()
     assert len(lf) == 0
     assert len(lf.timestamps) == 0
+
+
+def test_timestamp_live_fold_delitem_int_removes_timestamp():
+    lf = TimeIndexedLiveFold(
+        [1, 2, 3, 4, 5], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0, 4.0, 5.0]
+    )
+    del lf[2]
+    assert list(lf) == [1, 2, 4, 5]
+    assert lf.timestamps == [1.0, 2.0, 4.0, 5.0]
+
+
+def test_timestamp_live_fold_delitem_slice_raises():
+    lf = TimeIndexedLiveFold(
+        [1, 2, 3, 4, 5], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0, 4.0, 5.0]
+    )
+    with pytest.raises(MonotonicityError):
+        del lf[1:3]
 
 
 def test_timestamp_live_fold_query_time_range(freezer):
