@@ -272,3 +272,7 @@ class TimeOrderedLiveFold(LiveFold):
     def pop(self, __index=-1):
         super().pop(__index)
         self.timestamps.pop(__index)
+
+    def clear(self):
+        super().clear()
+        self.timestamps.clear()
