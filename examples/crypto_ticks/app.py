@@ -1,9 +1,9 @@
 """Live crypto tick demo.
 
-Replays a synthetic BTC/USD tick stream into a LiveFold, with a range
-slider for querying high/low over any user-selected time window. The
-synthetic stream is reproducible (seeded) and never depends on a live
-network feed — see live_websocket.py for the recipe to swap in real
+Replays a synthetic BTC/USD tick stream into a TimeIndexedLiveFold, with
+a range slider for querying high/low over any user-selected time window.
+The synthetic stream is reproducible (seeded) and never depends on a
+live network feed — see live_websocket.py for the recipe to swap in real
 Binance ticks.
 
 Run with:
@@ -21,7 +21,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
-from livefold import LiveFold
+from livefold import InvalidRangeException, TimeIndexedLiveFold
 
 st.set_page_config(
     page_title="livefold — live crypto ticks", page_icon="💸", layout="wide"
@@ -47,8 +47,9 @@ def gen_tick(prev_price: float, rng: random.Random) -> float:
 
 def init_state() -> None:
     if "lf" not in st.session_state:
-        st.session_state.lf = LiveFold([], folds={"sum": sum, "max": max, "min": min})
-        st.session_state.timestamps = []
+        st.session_state.lf = TimeIndexedLiveFold(
+            [], folds={"sum": sum, "max": max, "min": min}
+        )
         st.session_state.last_price = START_PRICE
         st.session_state.start = time.time()
         st.session_state.rng = random.Random(42)
@@ -57,18 +58,16 @@ def init_state() -> None:
 def append_ticks(rate_multiplier: int) -> None:
     now = time.time() - st.session_state.start
     target_count = int(now / TICK_DT) * rate_multiplier
-    while len(st.session_state.timestamps) < target_count:
+    while len(st.session_state.lf) < target_count:
         next_price = gen_tick(st.session_state.last_price, st.session_state.rng)
-        st.session_state.lf.append(next_price)
-        next_t = len(st.session_state.timestamps) * TICK_DT / rate_multiplier
-        st.session_state.timestamps.append(next_t)
+        next_t = len(st.session_state.lf) * TICK_DT / rate_multiplier
+        st.session_state.lf.append(next_price, timestamp=next_t)
         st.session_state.last_price = next_price
 
 
 def reset() -> None:
     for key in (
         "lf",
-        "timestamps",
         "last_price",
         "start",
         "rng",
@@ -82,7 +81,7 @@ init_state()
 st.title("livefold — live crypto ticks")
 st.caption(
     "Synthetic BTC/USD ticks (geometric Brownian motion + rare jumps, "
-    "deterministic with a fixed seed) appended to a `LiveFold`. "
+    "deterministic with a fixed seed) appended to a `TimeIndexedLiveFold`. "
     "Drag the slider to query the high/low/VWAP-numerator over any window."
 )
 
@@ -97,7 +96,7 @@ with col_l:
 
 append_ticks(rate)
 
-ts = st.session_state.timestamps
+ts = st.session_state.lf.timestamps
 prices = list(st.session_state.lf)
 n = len(ts)
 
@@ -147,13 +146,9 @@ window = st.slider(
     key="window_slider",
 )
 
-left_idx = bisect.bisect_left(ts, window[0])
-right_idx = bisect.bisect_right(ts, window[1]) - 1
-right_idx = min(right_idx, n - 1)
-
-if right_idx > left_idx:
-    stats = st.session_state.lf.query(left_idx, right_idx)
-    span = right_idx - left_idx + 1
+try:
+    stats = st.session_state.lf.query_time_range(window[0], window[1])
+    span = bisect.bisect_right(ts, window[1]) - bisect.bisect_left(ts, window[0])
     vwap_proxy = stats["sum"] / span  # equal-weighted; real VWAP needs volume
 
     m1, m2, m3, m4 = st.columns(4)
@@ -161,23 +156,28 @@ if right_idx > left_idx:
     m2.metric("High", f"${stats['max']:,.2f}")
     m3.metric("Low", f"${stats['min']:,.2f}")
     m4.metric("Avg price", f"${vwap_proxy:,.2f}")
-else:
+except InvalidRangeException:
     st.warning("Pick a wider range — need at least two ticks.")
 
 with st.expander("How this works"):
     st.markdown(
         """
-        A single `LiveFold` instance holds the entire price series:
+        A single `TimeIndexedLiveFold` instance holds the entire price series
+        with a parallel timestamp per tick:
 
         ```python
-        lf = LiveFold([], folds={"sum": sum, "max": max, "min": min})
+        lf = TimeIndexedLiveFold(
+            [], folds={"sum": sum, "max": max, "min": min}
+        )
         # for each incoming tick:
-        lf.append(price)
+        lf.append(price, timestamp=t)
         ```
 
-        When you drag the range slider, we map your time window to indices
-        and call `lf.query(left, right)` — which returns `{sum, max, min}`
-        in **O(√n)** regardless of how long the stream has been running.
+        When you drag the range slider, we call
+        `lf.query_time_range(t1, t2)` directly — `bisect` maps the
+        timestamps to indices in O(log n), and the underlying √n-decomposed
+        query returns `{sum, max, min}` in **O(√n)** regardless of how long
+        the stream has been running.
 
         At a 25× replay rate this generates ~125 ticks/second; after a few
         minutes the underlying series is in the tens of thousands and

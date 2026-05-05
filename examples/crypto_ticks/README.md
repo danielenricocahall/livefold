@@ -1,6 +1,6 @@
 # Live Crypto Ticks Demo
 
-A Streamlit dashboard that replays a synthetic BTC/USD tick stream into a `LiveFold`, with a range slider for querying the high/low/average over any user-selected time window.
+A Streamlit dashboard that replays a synthetic BTC/USD tick stream into a `TimeIndexedLiveFold`, with a range slider for querying the high/low/average over any user-selected time window.
 
 The synthetic stream is reproducible (seeded geometric Brownian motion + occasional jumps) and runs entirely offline. For real Binance data, see [`live_websocket.py`](./live_websocket.py) next to this file — it's a drop-in replacement.
 
@@ -17,15 +17,15 @@ The dashboard opens in your browser. Pick a replay speed (1× through 100×), le
 ## What's happening
 
 ```python
-from livefold import LiveFold
+from livefold import TimeIndexedLiveFold
 
-lf = LiveFold([], folds={"sum": sum, "max": max, "min": min})
+lf = TimeIndexedLiveFold([], folds={"sum": sum, "max": max, "min": min})
 
 # As each tick arrives:
-lf.append(price)
+lf.append(price, timestamp=t)
 
 # When the user picks a time window [t1, t2]:
-stats = lf.query(left_idx, right_idx)
+stats = lf.query_time_range(t1, t2)
 # → {"sum": ..., "max": ..., "min": ...}  in O(√n)
 ```
 
@@ -35,7 +35,7 @@ At a 25× replay rate, this generates ~125 ticks/second. After a few minutes the
 
 A live WebSocket demo is more impressive on the first viewing but rots fast: Binance changes endpoint paths, adds rate limits, or simply has an outage. Anyone reading this README a year from now should still be able to run the demo and see something. The synthetic generator gives you that — same shape (roughly BTC-ish prices, realistic volatility, occasional jumps) without the fragility.
 
-If you want real ticks, [`live_websocket.py`](./live_websocket.py) shows the ~30 lines needed to swap them in. The rest of the demo (LiveFold, chart, range slider, query logic) is identical.
+If you want real ticks, [`live_websocket.py`](./live_websocket.py) shows the ~30 lines needed to swap them in. The rest of the demo (TimeIndexedLiveFold, chart, range slider, query logic) is identical.
 
 ## Adapting this to your data
 
@@ -46,4 +46,4 @@ The "tick stream" pattern fits more than crypto:
 - Sensor networks — readings from multiple devices, range stats per sensor
 - Game telemetry — player events, range stats per match
 
-Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows, the same five lines of LiveFold apply.
+Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows, the same five lines of `TimeIndexedLiveFold` apply.
