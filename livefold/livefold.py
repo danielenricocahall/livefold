@@ -285,5 +285,5 @@ class TimeOrderedLiveFold(LiveFold):
             return super().query(left, right)
         except InvalidRangeException as e:
             raise InvalidRangeException(
-                f"Invalid time range query: {start} to {end}"
+                f"No elements in time range: [{start}, {end}]"
             ) from e
