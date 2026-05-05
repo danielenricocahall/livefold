@@ -12,6 +12,9 @@ class InvalidRangeException(Exception): ...
 class InvalidFoldException(Exception): ...
 
 
+class MonotonicityError(Exception): ...
+
+
 class LiveFold(list):
     def __init__(self, data: Iterable[Any], folds: dict[str, Callable]):
         super().__init__(data)
@@ -261,18 +264,66 @@ class TimeOrderedLiveFold(LiveFold):
         self.extend([__object], [timestamp] if timestamp else None)
 
     def extend(self, __iterable, timestamps: list[float] | None = None):
-        if not timestamps:
-            timestamps = [time.time() for _ in __iterable]
         __iterable = list(__iterable)
-        assert len(timestamps) == len(__iterable), (
-            f"Timestamps and iterable lengths must match, got {len(timestamps)} and {len(__iterable)}"
-        )
+        if timestamps is None:
+            timestamps = [time.time() for _ in __iterable]
+        else:
+            assert len(timestamps) == len(__iterable), (
+                f"Timestamps and iterable lengths must match, got {len(timestamps)} and {len(__iterable)}"
+            )
+            self._check_monotonic(timestamps)
         super().extend(__iterable)
-        self.timestamps.extend(timestamps)
+        self._timestamps.extend(timestamps)
+
+    def _check_monotonic(self, new_timestamps: list[float]) -> None:
+        prev = self._timestamps[-1] if self._timestamps else None
+        for ts in new_timestamps:
+            if prev is not None and ts < prev:
+                raise MonotonicityError(
+                    f"non-monotonic timestamp: {ts} precedes {prev}"
+                )
+            prev = ts
+
+    def insert(self, __index, __object):
+        raise MonotonicityError(
+            "insert is not supported on TimeOrderedLiveFold; use append to preserve time ordering"
+        )
+
+    def sort(self, *, key=None, reverse=False):
+        raise MonotonicityError(
+            "sort is not supported on TimeOrderedLiveFold; sorting would break time ordering"
+        )
+
+    def reverse(self):
+        raise MonotonicityError(
+            "reverse is not supported on TimeOrderedLiveFold; reversing would break time ordering"
+        )
+
+    def __setitem__(self, key, value):
+        if isinstance(key, slice):
+            raise MonotonicityError(
+                "slice assignment is not supported on TimeOrderedLiveFold; "
+                "it would not preserve alignment with stored timestamps"
+            )
+        super().__setitem__(key, value)
+
+    def __delitem__(self, key):
+        if isinstance(key, slice):
+            raise MonotonicityError(
+                "slice deletion is not supported on TimeOrderedLiveFold; use pop or remove"
+            )
+        super().__delitem__(key)
+        del self._timestamps[key]
+
+    def __add__(self, other):
+        raise MonotonicityError(
+            "+ is not supported on TimeOrderedLiveFold; the result would lose timestamp metadata"
+        )
 
     def pop(self, __index=-1):
-        super().pop(__index)
+        value = super().pop(__index)
         self.timestamps.pop(__index)
+        return value
 
     def clear(self):
         super().clear()
