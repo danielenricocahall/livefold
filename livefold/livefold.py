@@ -241,7 +241,7 @@ class LiveFold(list):
         self.folded_values = {name: [] for name in self.folds}
 
 
-class TimeOrderedLiveFold(LiveFold, Generic[T]):
+class TimeIndexedLiveFold(LiveFold, Generic[T]):
     """LiveFold with monotonically non-decreasing timestamps per element.
 
     Generic over `T`, the timestamp type. Any orderable type works
@@ -302,23 +302,23 @@ class TimeOrderedLiveFold(LiveFold, Generic[T]):
 
     def insert(self, __index, __object):
         raise MonotonicityError(
-            "insert is not supported on TimeOrderedLiveFold; use append to preserve time ordering"
+            "insert is not supported on TimeIndexedLiveFold; use append to preserve time ordering"
         )
 
     def sort(self, *, key=None, reverse=False):
         raise MonotonicityError(
-            "sort is not supported on TimeOrderedLiveFold; sorting would break time ordering"
+            "sort is not supported on TimeIndexedLiveFold; sorting would break time ordering"
         )
 
     def reverse(self):
         raise MonotonicityError(
-            "reverse is not supported on TimeOrderedLiveFold; reversing would break time ordering"
+            "reverse is not supported on TimeIndexedLiveFold; reversing would break time ordering"
         )
 
     def __setitem__(self, key, value):
         if isinstance(key, slice):
             raise MonotonicityError(
-                "slice assignment is not supported on TimeOrderedLiveFold; "
+                "slice assignment is not supported on TimeIndexedLiveFold; "
                 "it would not preserve alignment with stored timestamps"
             )
         super().__setitem__(key, value)
@@ -326,35 +326,35 @@ class TimeOrderedLiveFold(LiveFold, Generic[T]):
     def __delitem__(self, key):
         if isinstance(key, slice):
             raise MonotonicityError(
-                "slice deletion is not supported on TimeOrderedLiveFold; use pop or remove"
+                "slice deletion is not supported on TimeIndexedLiveFold; use pop or remove"
             )
         super().__delitem__(key)
         del self._timestamps[key]
 
     def __add__(self, other):
-        if not isinstance(other, TimeOrderedLiveFold):
+        if not isinstance(other, TimeIndexedLiveFold):
             raise MonotonicityError(
-                "+ only supports TimeOrderedLiveFold + TimeOrderedLiveFold; "
+                "+ only supports TimeIndexedLiveFold + TimeIndexedLiveFold; "
                 "use extend(values, timestamps=...) for other inputs"
             )
         self._check_monotonic(other.timestamps)
-        return TimeOrderedLiveFold(
+        return TimeIndexedLiveFold(
             list(self) + list(other),
             self.folds,
             timestamps=self.timestamps + other.timestamps,
         )
 
     def __iadd__(self, other):
-        if not isinstance(other, TimeOrderedLiveFold):
+        if not isinstance(other, TimeIndexedLiveFold):
             raise MonotonicityError(
-                "+= only supports TimeOrderedLiveFold + TimeOrderedLiveFold; "
+                "+= only supports TimeIndexedLiveFold + TimeIndexedLiveFold; "
                 "use extend(values, timestamps=...) for other inputs"
             )
         self.extend(list(other), timestamps=list(other.timestamps))
         return self
 
     def copy(self):
-        return TimeOrderedLiveFold(
+        return TimeIndexedLiveFold(
             list(self), self.folds, timestamps=list(self._timestamps)
         )
 
@@ -362,7 +362,7 @@ class TimeOrderedLiveFold(LiveFold, Generic[T]):
         return self.copy()
 
     def __deepcopy__(self, memo):
-        return TimeOrderedLiveFold(
+        return TimeIndexedLiveFold(
             _copy.deepcopy(list(self), memo),
             self.folds,
             timestamps=_copy.deepcopy(self._timestamps, memo),

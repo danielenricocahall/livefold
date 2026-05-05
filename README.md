@@ -74,14 +74,14 @@ LiveFold(data: Iterable, folds: dict[str, Callable])
 
 `LiveFold` subclasses `list`, so it's a drop-in for any code that expected a plain list — until you start calling `query`.
 
-## Time-indexed queries: `TimeOrderedLiveFold`
+## Time-indexed queries: `TimeIndexedLiveFold`
 
-For monotonic streams where you want to query by *time* instead of *index*, `TimeOrderedLiveFold` carries a parallel timestamp per element and exposes `query_time_range`. Bisect maps timestamps to indices in O(log n), so overall query cost stays O(√n).
+For monotonic streams where you want to query by *time* instead of *index*, `TimeIndexedLiveFold` carries a parallel timestamp per element and exposes `query_time_range`. Bisect maps timestamps to indices in O(log n), so overall query cost stays O(√n).
 
 ```python
-from livefold import TimeOrderedLiveFold
+from livefold import TimeIndexedLiveFold
 
-lf = TimeOrderedLiveFold(
+lf = TimeIndexedLiveFold(
     [1, 2, 3],
     folds={"sum": sum, "max": max},
     timestamps=[1.0, 2.0, 3.0],
@@ -97,9 +97,9 @@ If you omit `timestamps` / `timestamp`, `time.time()` is used by default. The cl
 
 ```python
 from datetime import datetime
-from livefold import TimeOrderedLiveFold
+from livefold import TimeIndexedLiveFold
 
-lf = TimeOrderedLiveFold[datetime](
+lf = TimeIndexedLiveFold[datetime](
     [1, 2, 3],
     folds={"sum": sum},
     timestamps=[datetime(2025, 1, 1), datetime(2025, 6, 1), datetime(2026, 1, 1)],
@@ -108,14 +108,14 @@ lf.query_time_range(datetime(2025, 5, 1), datetime(2026, 6, 1))
 # → {"sum": 5}
 ```
 
-`TimeOrderedLiveFold` is **append-only by design**. Operations that would break time ordering raise `MonotonicityError`:
+`TimeIndexedLiveFold` is **append-only by design**. Operations that would break time ordering raise `MonotonicityError`:
 
 - `insert`, `sort`, `reverse` — would break the ordering invariant
 - slice `__setitem__`, slice `__delitem__` — would desync data and timestamps
 - `append` / `extend` with a timestamp earlier than the last stored one
-- `+` / `+=` with anything other than another `TimeOrderedLiveFold` (use `extend(values, timestamps=...)` instead)
+- `+` / `+=` with anything other than another `TimeIndexedLiveFold` (use `extend(values, timestamps=...)` instead)
 
-Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work normally and keep the parallel timestamp list in sync. `+` and `+=` between two `TimeOrderedLiveFold` instances concatenate timestamps and re-check monotonicity.
+Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work normally and keep the parallel timestamp list in sync. `+` and `+=` between two `TimeIndexedLiveFold` instances concatenate timestamps and re-check monotonicity.
 
 ## How it works
 

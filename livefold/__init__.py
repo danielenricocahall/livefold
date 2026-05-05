@@ -1,6 +1,6 @@
 from livefold.livefold import (
     LiveFold,
-    TimeOrderedLiveFold,
+    TimeIndexedLiveFold,
     InvalidRangeException,
     InvalidFoldException,
     MonotonicityError,
@@ -8,7 +8,7 @@ from livefold.livefold import (
 
 __all__ = [
     "LiveFold",
-    "TimeOrderedLiveFold",
+    "TimeIndexedLiveFold",
     "InvalidRangeException",
     "InvalidFoldException",
     "MonotonicityError",
