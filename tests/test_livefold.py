@@ -473,3 +473,10 @@ def test_timestamp_live_fold_create_with_invalid_number_of_timestamps(freezer):
             folds={"sum": sum},
             timestamps=[designated_date_epoch] * 5,
         )
+
+
+def test_timestamp_live_fold_clear():
+    lf = TimeOrderedLiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum})
+    lf.clear()
+    assert len(lf) == 0
+    assert len(lf.timestamps) == 0
