@@ -44,18 +44,18 @@ lf.query(2, 5)
 
 ## Performance
 
-![Query latency vs collection size](./benchmarks/plots/query_latency.png)
+![Query latency vs collection size](https://raw.githubusercontent.com/danielenricocahall/livefold/main/benchmarks/plots/query_latency.png)
 
 At n = 10⁷, `livefold`'s median range query is **69 µs vs naive Python's 29 ms** (~400× faster), and append cost stays **flat at 2 µs across all n** while every other backend with a competitive query path (numpy, pandas) degrades linearly on appends. `livefold` is the only line that doesn't bend the wrong way on either axis.
 
-Full methodology, append benchmarks, comparison against four backends, and the reproduction script: [`benchmarks/`](./benchmarks).
+Full methodology, append benchmarks, comparison against four backends, and the reproduction script: [`benchmarks/`](https://github.com/danielenricocahall/livefold/tree/main/benchmarks).
 
 ## Examples
 
-Two runnable Streamlit demos in [`examples/`](./examples):
+Two runnable Streamlit demos in [`examples/`](https://github.com/danielenricocahall/livefold/tree/main/examples):
 
-- **[`system_metrics/`](./examples/system_metrics)** — live `psutil`-driven CPU/memory dashboard with arbitrary-range aggregate queries. Runs entirely offline.
-- **[`crypto_ticks/`](./examples/crypto_ticks)** — synthetic BTC/USD tick stream with high/low/avg-price queries. Includes a drop-in recipe for real Binance ticks.
+- **[`system_metrics/`](https://github.com/danielenricocahall/livefold/tree/main/examples/system_metrics)** — live `psutil`-driven CPU/memory dashboard with arbitrary-range aggregate queries. Runs entirely offline.
+- **[`crypto_ticks/`](https://github.com/danielenricocahall/livefold/tree/main/examples/crypto_ticks)** — synthetic BTC/USD tick stream with high/low/avg-price queries. Includes a drop-in recipe for real Binance ticks.
 
 
 ## API
@@ -132,4 +132,4 @@ For the full derivation, complexity analysis, and worked examples, see the [orig
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/danielenricocahall/livefold/blob/main/CONTRIBUTING.md).
