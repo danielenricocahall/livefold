@@ -123,6 +123,10 @@ Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work n
 
 `LiveFold` splits its underlying list into ⌊√n⌋ blocks of size √n, precomputes the configured folds for each block, and updates them incrementally on mutation. A `query(left, right)` walks at most two partial blocks plus the precomputed folds for whole-block spans in between — touching roughly 2√n elements per fold regardless of n. Mo's algorithm with mutability and a dict-shaped output.
 
+![Append re-block animation](https://raw.githubusercontent.com/danielenricocahall/livefold/main/assets/resize_animation.gif)
+
+`append` is **amortized O(1)**: most appends just push onto the last block, but each time `n` crosses a perfect square, `block_size = isqrt(n)` increments and the whole structure re-blocks — a one-off O(n) cost. Perfect squares get geometrically sparser as `n` grows (the gap between consecutive squares is `2k + 1`), so the total re-block work amortizes to O(1) per append.
+
 `TimeIndexedLiveFold` layers a parallel monotonically non-decreasing timestamp list on top. `query_time_range(start, end)` calls `bisect_left`/`bisect_right` to map timestamps to indices in O(log n), then routes through the same √n-decomposed query path — so overall query cost stays O(√n).
 
 For the full derivation, complexity analysis, and worked examples, see the [original blog post](https://open.substack.com/pub/dannycahall/p/pysquagg-square-root-decomposition?r=1swlpp&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true).
