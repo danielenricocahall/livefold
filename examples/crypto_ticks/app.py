@@ -152,7 +152,12 @@ try:
     vwap_proxy = stats["sum"] / span  # equal-weighted; real VWAP needs volume
 
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Ticks in window", f"{span:,}")
+    m1.metric(
+        "Ticks in window",
+        f"{span:,}",
+        delta=f"over {window[1] - window[0]:.1f}s",
+        delta_color="off",
+    )
     m2.metric("High", f"${stats['max']:,.2f}")
     m3.metric("Low", f"${stats['min']:,.2f}")
     m4.metric("Avg price", f"${vwap_proxy:,.2f}")

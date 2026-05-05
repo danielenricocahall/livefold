@@ -126,7 +126,12 @@ try:
     mean = stats["sum"] / span
 
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Samples in window", f"{span:,}")
+    m1.metric(
+        "Samples in window",
+        f"{span:,}",
+        delta=f"over {window[1] - window[0]:.1f}s",
+        delta_color="off",
+    )
     m2.metric("Sum", f"{stats['sum']:.1f}")
     m3.metric("Max", f"{stats['max']:.2f}")
     m4.metric("Min", f"{stats['min']:.2f}")
