@@ -1,3 +1,4 @@
+import bisect
 import copy as _copy
 import time
 
@@ -276,3 +277,13 @@ class TimeOrderedLiveFold(LiveFold):
     def clear(self):
         super().clear()
         self.timestamps.clear()
+
+    def query_time_range(self, start: float, end: float):
+        left = bisect.bisect_left(self.timestamps, start)
+        right = bisect.bisect_right(self.timestamps, end) - 1
+        try:
+            return super().query(left, right)
+        except InvalidRangeException as e:
+            raise InvalidRangeException(
+                f"Invalid time range query: {start} to {end}"
+            ) from e

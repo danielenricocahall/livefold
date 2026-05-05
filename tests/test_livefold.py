@@ -480,3 +480,44 @@ def test_timestamp_live_fold_clear():
     lf.clear()
     assert len(lf) == 0
     assert len(lf.timestamps) == 0
+
+
+def test_timestamp_live_fold_query_time_range(freezer):
+    designated_date = "2025-01-01"
+    freezer.move_to(designated_date)
+    lf = TimeOrderedLiveFold([1, 2, 3], folds={"sum": sum})
+    another_designated_date = "2026-01-01"
+    another_designated_date_epoch = datetime.datetime.strptime(
+        another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(another_designated_date)
+    lf.append(4)
+    lf.append(5)
+    yet_another_designated_date = "2026-10-01"
+    yet_another_designated_date_epoch = datetime.datetime.strptime(
+        yet_another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    lf.append(6)
+    lf.append(7)
+    lf.append(8)
+    lf.query_time_range(
+        another_designated_date_epoch, yet_another_designated_date_epoch
+    )
+
+
+def test_timestamp_live_fold_query_time_range_failure(freezer):
+    designated_date = "2025-01-01"
+    freezer.move_to(designated_date)
+    lf = TimeOrderedLiveFold([1, 2, 3], folds={"sum": sum})
+    another_designated_date = "2026-01-01"
+    another_designated_date_epoch = datetime.datetime.strptime(
+        another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    yet_another_designated_date = "2026-10-01"
+    yet_another_designated_date_epoch = datetime.datetime.strptime(
+        yet_another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    with pytest.raises(InvalidRangeException):
+        lf.query_time_range(
+            another_designated_date_epoch, yet_another_designated_date_epoch
+        )
