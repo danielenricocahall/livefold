@@ -3,7 +3,9 @@ import copy as _copy
 import time
 
 from math import isqrt
-from typing import Any, Iterable, Callable
+from typing import Any, Generic, Iterable, Callable, TypeVar
+
+T = TypeVar("T")
 
 
 class InvalidRangeException(Exception): ...
@@ -239,43 +241,57 @@ class LiveFold(list):
         self.folded_values = {name: [] for name in self.folds}
 
 
-class TimeOrderedLiveFold(LiveFold):
+class TimeOrderedLiveFold(LiveFold, Generic[T]):
+    """LiveFold with monotonically non-decreasing timestamps per element.
+
+    Generic over `T`, the timestamp type. Any orderable type works
+    (`float`, `int`, `datetime`, etc.) — the implementation only uses `<`
+    and `bisect`, which require mutual comparability of stored timestamps.
+
+    The `timestamp=None` defaults in `__init__`, `append`, and `extend`
+    fall back to `time.time()` (a `float`). This default only makes sense
+    for `T = float`; for any other type, pass timestamps explicitly.
+    """
+
     def __init__(
         self,
         data: Iterable[Any],
         folds: dict[str, Callable],
-        timestamps: list[float] | None = None,
+        timestamps: list[T] | None = None,
     ):
         super().__init__(data, folds)
         if timestamps is not None:
-            assert len(timestamps) == len(self), (
-                "Timestamps and iterable length must match, got len(timestamps)"
-            )
-            self._timestamps: list[float] = timestamps
+            if len(timestamps) != len(self):
+                raise ValueError(
+                    f"Timestamps and data length must match, got {len(timestamps)} and {len(self)}"
+                )
+            self._timestamps: list[T] = []
+            self._check_monotonic(timestamps)
+            self._timestamps = list(timestamps)
         else:
-            self._timestamps: list[float] = []
-            self.timestamps.extend([time.time() for _ in range(len(self))])
+            self._timestamps: list[T] = [time.time() for _ in range(len(self))]
 
     @property
-    def timestamps(self):
+    def timestamps(self) -> list[T]:
         return self._timestamps
 
-    def append(self, __object, timestamp: float | None = None):
-        self.extend([__object], [timestamp] if timestamp else None)
+    def append(self, __object, timestamp: T | None = None):
+        self.extend([__object], [timestamp] if timestamp is not None else None)
 
-    def extend(self, __iterable, timestamps: list[float] | None = None):
+    def extend(self, __iterable, timestamps: list[T] | None = None):
         __iterable = list(__iterable)
         if timestamps is None:
             timestamps = [time.time() for _ in __iterable]
         else:
-            assert len(timestamps) == len(__iterable), (
-                f"Timestamps and iterable lengths must match, got {len(timestamps)} and {len(__iterable)}"
-            )
+            if len(timestamps) != len(__iterable):
+                raise ValueError(
+                    f"Timestamps and iterable lengths must match, got {len(timestamps)} and {len(__iterable)}"
+                )
             self._check_monotonic(timestamps)
         super().extend(__iterable)
         self._timestamps.extend(timestamps)
 
-    def _check_monotonic(self, new_timestamps: list[float]) -> None:
+    def _check_monotonic(self, new_timestamps: list[T]) -> None:
         prev = self._timestamps[-1] if self._timestamps else None
         for ts in new_timestamps:
             if prev is not None and ts < prev:
@@ -316,8 +332,46 @@ class TimeOrderedLiveFold(LiveFold):
         del self._timestamps[key]
 
     def __add__(self, other):
-        raise MonotonicityError(
-            "+ is not supported on TimeOrderedLiveFold; the result would lose timestamp metadata"
+        if not isinstance(other, TimeOrderedLiveFold):
+            raise MonotonicityError(
+                "+ only supports TimeOrderedLiveFold + TimeOrderedLiveFold; "
+                "use extend(values, timestamps=...) for other inputs"
+            )
+        self._check_monotonic(other.timestamps)
+        return TimeOrderedLiveFold(
+            list(self) + list(other),
+            self.folds,
+            timestamps=self.timestamps + other.timestamps,
+        )
+
+    def __iadd__(self, other):
+        if not isinstance(other, TimeOrderedLiveFold):
+            raise MonotonicityError(
+                "+= only supports TimeOrderedLiveFold + TimeOrderedLiveFold; "
+                "use extend(values, timestamps=...) for other inputs"
+            )
+        self.extend(list(other), timestamps=list(other.timestamps))
+        return self
+
+    def copy(self):
+        return TimeOrderedLiveFold(
+            list(self), self.folds, timestamps=list(self._timestamps)
+        )
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memo):
+        return TimeOrderedLiveFold(
+            _copy.deepcopy(list(self), memo),
+            self.folds,
+            timestamps=_copy.deepcopy(self._timestamps, memo),
+        )
+
+    def __reduce__(self):
+        return (
+            self.__class__,
+            (list(self), self.folds, list(self._timestamps)),
         )
 
     def pop(self, __index=-1):
@@ -329,7 +383,7 @@ class TimeOrderedLiveFold(LiveFold):
         super().clear()
         self.timestamps.clear()
 
-    def query_time_range(self, start: float, end: float):
+    def query_time_range(self, start: T, end: T):
         left = bisect.bisect_left(self.timestamps, start)
         right = bisect.bisect_right(self.timestamps, end) - 1
         try:
