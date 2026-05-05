@@ -236,21 +236,38 @@ class LiveFold(list):
 
 
 class TimeOrderedLiveFold(LiveFold):
-    def __init__(self, data: Iterable[Any], folds: dict[str, Callable]):
-        self._timestamps: list[float] = []
-        if data:
-            self.timestamps.extend([time.time() for _ in data])
+    def __init__(
+        self,
+        data: Iterable[Any],
+        folds: dict[str, Callable],
+        timestamps: list[float] | None = None,
+    ):
         super().__init__(data, folds)
+        if timestamps is not None:
+            assert len(timestamps) == len(self), (
+                "Timestamps and iterable length must match, got len(timestamps)"
+            )
+            self._timestamps: list[float] = timestamps
+        else:
+            self._timestamps: list[float] = []
+            self.timestamps.extend([time.time() for _ in range(len(self))])
 
     @property
     def timestamps(self):
         return self._timestamps
 
     def append(self, __object, timestamp: float | None = None):
-        if not timestamp:
-            timestamp = time.time()
-        self.timestamps.append(timestamp)
-        super().append(__object)
+        self.extend([__object], [timestamp] if timestamp else None)
+
+    def extend(self, __iterable, timestamps: list[float] | None = None):
+        if not timestamps:
+            timestamps = [time.time() for _ in __iterable]
+        __iterable = list(__iterable)
+        assert len(timestamps) == len(__iterable), (
+            f"Timestamps and iterable lengths must match, got {len(timestamps)} and {len(__iterable)}"
+        )
+        super().extend(__iterable)
+        self.timestamps.extend(timestamps)
 
     def pop(self, __index=-1):
         super().pop(__index)

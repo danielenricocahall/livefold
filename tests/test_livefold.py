@@ -1,6 +1,7 @@
 import copy
 import datetime
 import pickle
+import time
 
 import pytest
 from livefold import LiveFold, InvalidRangeException
@@ -416,6 +417,23 @@ def test_timestamp_live_fold_append(freezer):
     assert lf.blocks == [[1, 2], [3, 4]]
 
 
+def test_timestamp_live_fold_append_with_timestamp(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeOrderedLiveFold([1, 2, 3], folds={"sum": sum})
+    new_designated_date = "2026-01-01"
+    freezer.move_to(new_designated_date)
+    lf.append(4, timestamp=time.time())
+    assert len(lf.timestamps) == 4
+    assert lf.timestamps == [designated_date_epoch] * 3 + [
+        datetime.datetime.strptime(new_designated_date, "%Y-%m-%d").timestamp()
+    ]
+    assert lf.blocks == [[1, 2], [3, 4]]
+
+
 def test_timestamp_live_fold_pop(freezer):
     designated_date = "2025-01-01"
     designated_date_epoch = datetime.datetime.strptime(
@@ -428,3 +446,30 @@ def test_timestamp_live_fold_pop(freezer):
     assert len(lf.timestamps) == 5
     assert lf.timestamps == [designated_date_epoch] * 5
     assert lf.blocks == [[1, 2], [3, 5], [6]]
+
+
+def test_timestamp_live_fold_create_with_timestamps(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeOrderedLiveFold(
+        [1, 2, 3, 4, 5, 6], folds={"sum": sum}, timestamps=[designated_date_epoch] * 6
+    )
+    assert len(lf) == 6
+    assert lf.timestamps == [designated_date_epoch] * 6
+
+
+def test_timestamp_live_fold_create_with_invalid_number_of_timestamps(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    with pytest.raises(AssertionError):
+        TimeOrderedLiveFold(
+            [1, 2, 3, 4, 5, 6],
+            folds={"sum": sum},
+            timestamps=[designated_date_epoch] * 5,
+        )
