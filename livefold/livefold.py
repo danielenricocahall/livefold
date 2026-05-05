@@ -388,6 +388,9 @@ class TimeIndexedLiveFold(LiveFold, Generic[T]):
         super().clear()
         self.timestamps.clear()
 
+    def __repr__(self) -> str:
+        return f"TimeIndexedLiveFold({list(self)!r}, timestamps={self._timestamps!r})"
+
     def query_time_range(self, start: T, end: T):
         left = bisect.bisect_left(self.timestamps, start)
         right = bisect.bisect_right(self.timestamps, end) - 1

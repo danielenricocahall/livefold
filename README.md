@@ -19,7 +19,7 @@
 | Fixed-width rolling windows | `pandas.rolling()` / `polars.rolling()` |
 | **Mutable series, arbitrary range queries, multi-fold** | **livefold** |
 
-Anywhere you have a numeric stream that grows and you want fast aggregates over arbitrary historical windows (e.g., request latencies, sensor readings, trade prices, telemetry events),`livefold` fits.
+Common shapes: request latencies, sensor readings, trade prices, telemetry events.
 
 ## Quickstart
 
@@ -76,7 +76,7 @@ LiveFold(data: Iterable, folds: dict[str, Callable])
 
 ## Time-indexed queries: `TimeIndexedLiveFold`
 
-For monotonic streams where you want to query by *time* instead of *index*, `TimeIndexedLiveFold` carries a parallel timestamp per element and exposes `query_time_range`. Bisect maps timestamps to indices in O(log n), so overall query cost stays O(√n).
+For monotonic streams where you want to query by *time* instead of *index*, `TimeIndexedLiveFold` carries a parallel timestamp per element and exposes `query_time_range` — still O(√n).
 
 ```python
 from livefold import TimeIndexedLiveFold
@@ -121,13 +121,24 @@ Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work n
 
 `LiveFold` splits its underlying list into ⌊√n⌋ blocks of size √n, precomputes the configured folds for each block, and updates them incrementally on mutation. A `query(left, right)` walks at most two partial blocks plus the precomputed folds for whole-block spans in between — touching roughly 2√n elements per fold regardless of n. Mo's algorithm with mutability and a dict-shaped output.
 
+`TimeIndexedLiveFold` layers a parallel monotonically non-decreasing timestamp list on top. `query_time_range(start, end)` calls `bisect_left`/`bisect_right` to map timestamps to indices in O(log n), then routes through the same √n-decomposed query path — so overall query cost stays O(√n).
+
 For the full derivation, complexity analysis, and worked examples, see the [original blog post](https://open.substack.com/pub/dannycahall/p/pysquagg-square-root-decomposition?r=1swlpp&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true).
 
 > *Note: the blog post predates the rebrand from `pysquagg` and uses the old singular `aggregator_function=` API. The math and structural choices are unchanged; only the package name and the `folds={"name": fn, ...}` dict shape have evolved.*
 
+## Fold contract
+
+A fold is a single-argument callable `fn(items) -> result` that:
+
+1. Accepts an **iterable** of elements (or, when called internally to combine block results, an iterable of prior fold results) and returns a single value.
+2. Is **associative**: `fn([fn([a, b]), fn([c, d])]) == fn([a, b, c, d])`. This lets `query` combine precomputed block-level folds with the partial folds at each end.
+3. Returns a value of the same shape it accepts as elements — i.e., feeding the result back through `fn` together with other results must work. `len` is a common-but-broken choice: it returns an `int` regardless of input shape, so `len([len(block_a), len(block_b)])` gives `2`, not the total element count.
+
+Examples that satisfy the contract: `sum`, `max`, `min`, `math.prod`, `math.gcd` (via `functools.reduce`), bitwise `or`/`and`/`xor`, `"".join`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) wrapped in a fold-shaped callable. Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too.
+
 ## Constraints
 
-- Folds must be **associative** (i.e., form a [monoid](https://en.wikipedia.org/wiki/Monoid)). `sum`, `max`, `min`, `product`, `gcd`, bitwise `or`/`and`/`xor`, and any mergeable sketch (t-digest, HyperLogLog, Count-Min, Welford) all qualify. Commutativity is *not* required — string concatenation, matrix multiplication, and other ordered monoids work too. 
 - **Not thread-safe.** Single-process, single-thread workloads only.
 
 ## Contributing
