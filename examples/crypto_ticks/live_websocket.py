@@ -3,8 +3,8 @@ the real Binance public WebSocket (no API key required).
 
 To use: copy `binance_tick_thread` and the queue plumbing into app.py,
 replace `append_ticks` with `drain_queue`, and delete the synthetic
-GBM helpers. The rest of the demo (LiveFold, chart, range slider)
-stays exactly the same.
+GBM helpers. The rest of the demo (TimeIndexedLiveFold, chart, range
+slider) stays exactly the same.
 
 Caveat: Binance occasionally changes endpoint URLs or rate-limits.
 The synthetic version is the canonical demo for that reason.
@@ -34,15 +34,14 @@ def binance_tick_thread(out_queue: queue.Queue, stop: threading.Event) -> None:
             out_queue.put((ts_ms, price))
 
 
-def drain_queue(q: queue.Queue, lf, timestamps: list, start_ms: int) -> None:
+def drain_queue(q: queue.Queue, lf, start_ms: int) -> None:
     """Drain whatever the websocket thread has buffered into the LiveFold."""
     while True:
         try:
             ts_ms, price = q.get_nowait()
         except queue.Empty:
             return
-        lf.append(price)
-        timestamps.append((ts_ms - start_ms) / 1000.0)
+        lf.append(price, timestamp=(ts_ms - start_ms) / 1000.0)
 
 
 # Streamlit wiring sketch — adapt into app.py:
@@ -60,6 +59,5 @@ def drain_queue(q: queue.Queue, lf, timestamps: list, start_ms: int) -> None:
 #     drain_queue(
 #         st.session_state.tick_q,
 #         st.session_state.lf,
-#         st.session_state.timestamps,
 #         st.session_state.start_ms,
 #     )
