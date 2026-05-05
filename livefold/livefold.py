@@ -33,6 +33,8 @@ class LiveFold(list):
 
     @property
     def block_count(self):
+        if not len(self):
+            return 0
         return len(self) // self.block_size
 
     @property
@@ -150,10 +152,7 @@ class LiveFold(list):
         return value
 
     def remove(self, __value):
-        index = self.index(__value)
-        if index == -1:
-            raise ValueError(f"{__value} not in list")
-        self.pop(index)
+        self.pop(self.index(__value))
 
     def reverse(self):
         super().reverse()
@@ -173,14 +172,19 @@ class LiveFold(list):
             # requires more thought for all edge cases
             self.blocks = self.compute_blocks()
         else:
+            if key < 0:
+                key += len(self)
             block_size = self.block_size
             block_index = key // block_size
             self.blocks[block_index][key % block_size] = value
             self._refold_at(block_index)
 
     def __delitem__(self, key):
-        super().__delitem__(key)
-        self.blocks = self.compute_blocks()
+        if isinstance(key, slice):
+            super().__delitem__(key)
+            self.blocks = self.compute_blocks()
+        else:
+            self.pop(key)
 
     def copy(self):
         return LiveFold(list(self), self.folds)
@@ -201,7 +205,7 @@ class LiveFold(list):
         )
 
     def query(self, left: int, right: int):
-        if right - left <= 0 or right > len(self) or left < 0:
+        if right - left < 0 or right >= len(self) or left < 0:
             raise InvalidRangeException(
                 f"Invalid range of {left} - {right}. Please supply a valid range!"
             )
@@ -328,8 +332,9 @@ class TimeIndexedLiveFold(LiveFold, Generic[T]):
             raise MonotonicityError(
                 "slice deletion is not supported on TimeIndexedLiveFold; use pop or remove"
             )
+        # super().__delitem__ routes int keys through self.pop, which we override
+        # to handle timestamps; no separate timestamp removal needed here.
         super().__delitem__(key)
-        del self._timestamps[key]
 
     def __add__(self, other):
         if not isinstance(other, TimeIndexedLiveFold):
