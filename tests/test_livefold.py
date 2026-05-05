@@ -1,9 +1,15 @@
 import copy
+import datetime
 import pickle
+import time
 
 import pytest
 from livefold import LiveFold, InvalidRangeException
-from livefold.livefold import InvalidFoldException
+from livefold.livefold import (
+    InvalidFoldException,
+    MonotonicityError,
+    TimeIndexedLiveFold,
+)
 
 
 def test_basic():
@@ -400,3 +406,222 @@ def test_non_commutative_fold_after_mutation():
     assert lf.query(0, 9) == {"concat": "abcdefghij"}
     lf[0] = "Z"
     assert lf.query(0, 9) == {"concat": "Zbcdefghij"}
+
+
+def test_timestamp_live_fold_append(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum})
+    lf.append(4)
+    assert len(lf.timestamps) == 4
+    assert lf.timestamps == [designated_date_epoch] * 4
+    assert lf.blocks == [[1, 2], [3, 4]]
+
+
+def test_timestamp_live_fold_append_with_timestamp(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum})
+    new_designated_date = "2026-01-01"
+    freezer.move_to(new_designated_date)
+    lf.append(4, timestamp=time.time())
+    assert len(lf.timestamps) == 4
+    assert lf.timestamps == [designated_date_epoch] * 3 + [
+        datetime.datetime.strptime(new_designated_date, "%Y-%m-%d").timestamp()
+    ]
+    assert lf.blocks == [[1, 2], [3, 4]]
+
+
+def test_timestamp_live_fold_pop(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeIndexedLiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum})
+    lf.pop(3)
+    assert len(lf) == 5
+    assert len(lf.timestamps) == 5
+    assert lf.timestamps == [designated_date_epoch] * 5
+    assert lf.blocks == [[1, 2], [3, 5], [6]]
+
+
+def test_timestamp_live_fold_create_with_timestamps(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    lf = TimeIndexedLiveFold(
+        [1, 2, 3, 4, 5, 6], folds={"sum": sum}, timestamps=[designated_date_epoch] * 6
+    )
+    assert len(lf) == 6
+    assert lf.timestamps == [designated_date_epoch] * 6
+
+
+def test_timestamp_live_fold_create_with_invalid_number_of_timestamps(freezer):
+    designated_date = "2025-01-01"
+    designated_date_epoch = datetime.datetime.strptime(
+        designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(designated_date)
+    with pytest.raises(ValueError):
+        TimeIndexedLiveFold(
+            [1, 2, 3, 4, 5, 6],
+            folds={"sum": sum},
+            timestamps=[designated_date_epoch] * 5,
+        )
+
+
+def test_timestamp_live_fold_clear():
+    lf = TimeIndexedLiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum})
+    lf.clear()
+    assert len(lf) == 0
+    assert len(lf.timestamps) == 0
+
+
+def test_timestamp_live_fold_query_time_range(freezer):
+    designated_date = "2025-01-01"
+    freezer.move_to(designated_date)
+    lf = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum})
+    another_designated_date = "2026-01-01"
+    another_designated_date_epoch = datetime.datetime.strptime(
+        another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    freezer.move_to(another_designated_date)
+    lf.append(4)
+    lf.append(5)
+    yet_another_designated_date = "2026-10-01"
+    yet_another_designated_date_epoch = datetime.datetime.strptime(
+        yet_another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    lf.append(6)
+    lf.append(7)
+    lf.append(8)
+    lf.query_time_range(
+        another_designated_date_epoch, yet_another_designated_date_epoch
+    )
+
+
+def test_timestamp_live_fold_query_time_range_failure(freezer):
+    designated_date = "2025-01-01"
+    freezer.move_to(designated_date)
+    lf = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum})
+    another_designated_date = "2026-01-01"
+    another_designated_date_epoch = datetime.datetime.strptime(
+        another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    yet_another_designated_date = "2026-10-01"
+    yet_another_designated_date_epoch = datetime.datetime.strptime(
+        yet_another_designated_date, "%Y-%m-%d"
+    ).timestamp()
+    with pytest.raises(InvalidRangeException):
+        lf.query_time_range(
+            another_designated_date_epoch, yet_another_designated_date_epoch
+        )
+
+
+def test_timestamp_live_fold_add_concatenates_two_streams():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    b = TimeIndexedLiveFold([4, 5, 6], folds={"sum": sum}, timestamps=[4.0, 5.0, 6.0])
+    combined = a + b
+    assert isinstance(combined, TimeIndexedLiveFold)
+    assert list(combined) == [1, 2, 3, 4, 5, 6]
+    assert combined.timestamps == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    assert combined.query_time_range(2.0, 5.0) == {"sum": 14}
+    assert list(a) == [1, 2, 3] and list(b) == [4, 5, 6]
+
+
+def test_timestamp_live_fold_add_rejects_non_monotonic():
+    a = TimeIndexedLiveFold(
+        [1, 2, 3], folds={"sum": sum}, timestamps=[10.0, 20.0, 30.0]
+    )
+    b = TimeIndexedLiveFold([4, 5], folds={"sum": sum}, timestamps=[25.0, 35.0])
+    with pytest.raises(MonotonicityError):
+        a + b
+
+
+def test_timestamp_live_fold_add_rejects_non_time_indexed_rhs():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    with pytest.raises(MonotonicityError):
+        a + [4, 5, 6]
+    with pytest.raises(MonotonicityError):
+        a + LiveFold([4, 5, 6], folds={"sum": sum})
+
+
+def test_timestamp_live_fold_init_rejects_misaligned_timestamps():
+    with pytest.raises(ValueError):
+        TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0])
+
+
+def test_timestamp_live_fold_init_rejects_non_monotonic_timestamps():
+    with pytest.raises(MonotonicityError):
+        TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[3.0, 1.0, 2.0])
+
+
+def test_timestamp_live_fold_extend_rejects_misaligned_timestamps():
+    lf = TimeIndexedLiveFold([1], folds={"sum": sum}, timestamps=[1.0])
+    with pytest.raises(ValueError):
+        lf.extend([2, 3], timestamps=[2.0])
+
+
+def test_timestamp_live_fold_iadd_concatenates_two_streams():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    b = TimeIndexedLiveFold([4, 5, 6], folds={"sum": sum}, timestamps=[4.0, 5.0, 6.0])
+    a += b
+    assert isinstance(a, TimeIndexedLiveFold)
+    assert list(a) == [1, 2, 3, 4, 5, 6]
+    assert a.timestamps == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+
+
+def test_timestamp_live_fold_iadd_rejects_non_time_indexed_rhs():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    with pytest.raises(MonotonicityError):
+        a += [4, 5, 6]
+
+
+def test_timestamp_live_fold_copy_preserves_timestamps():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    b = a.copy()
+    assert isinstance(b, TimeIndexedLiveFold)
+    assert list(b) == [1, 2, 3]
+    assert b.timestamps == [1.0, 2.0, 3.0]
+    assert b.timestamps is not a.timestamps
+    b.append(4, timestamp=4.0)
+    assert list(a) == [1, 2, 3]
+    assert a.timestamps == [1.0, 2.0, 3.0]
+
+
+def test_timestamp_live_fold_deepcopy_preserves_timestamps():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    b = copy.deepcopy(a)
+    assert isinstance(b, TimeIndexedLiveFold)
+    assert list(b) == [1, 2, 3]
+    assert b.timestamps == [1.0, 2.0, 3.0]
+
+
+def test_timestamp_live_fold_pickle_preserves_timestamps():
+    a = TimeIndexedLiveFold([1, 2, 3], folds={"sum": sum}, timestamps=[1.0, 2.0, 3.0])
+    b = pickle.loads(pickle.dumps(a))
+    assert isinstance(b, TimeIndexedLiveFold)
+    assert list(b) == [1, 2, 3]
+    assert b.timestamps == [1.0, 2.0, 3.0]
+
+
+def test_timestamp_live_fold_supports_datetime_timestamps():
+    t1 = datetime.datetime(2025, 1, 1)
+    t2 = datetime.datetime(2025, 6, 1)
+    t3 = datetime.datetime(2026, 1, 1)
+    t4 = datetime.datetime(2026, 6, 1)
+    lf = TimeIndexedLiveFold[datetime.datetime](
+        [1, 2, 3], folds={"sum": sum}, timestamps=[t1, t2, t3]
+    )
+    lf.append(4, timestamp=t4)
+    assert lf.query_time_range(t2, t3) == {"sum": 5}
+    assert lf.query_time_range(t1, t4) == {"sum": 10}
