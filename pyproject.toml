@@ -1,6 +1,6 @@
 [project]
 name = "livefold"
-version = "0.0.0"
+version = "0.1.0"
 description = "A primitive for online sequential aggregation in Python"
 readme = "README.md"
 authors = [{ name="Daniel Cahall" }]
@@ -42,6 +42,7 @@ exclude = [
   "/tests",
     "/benchmarks",
     "/examples",
+    "/assets",
     "README.md",
     "CONTRIBUTING.md"
 ]
