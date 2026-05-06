@@ -129,7 +129,7 @@ Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work n
 
 `TimeIndexedLiveFold` layers a parallel monotonically non-decreasing timestamp list on top. `query_time_range(start, end)` calls `bisect_left`/`bisect_right` to map timestamps to indices in O(log n), then routes through the same √n-decomposed query path — so overall query cost stays O(√n).
 
-For the full derivation, complexity analysis, and worked examples, see the [original blog post](https://open.substack.com/pub/dannycahall/p/pysquagg-square-root-decomposition?r=1swlpp&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true).
+For the full derivation, complexity analysis, and other implementation details, see the [corresponding blog post](https://dannycahall.substack.com/p/square-root-decomposition-made-mutable).
 
 > *Note: the blog post predates the rebrand from `pysquagg` and uses the old singular `aggregator_function=` API. The math and structural choices are unchanged; only the package name and the `folds={"name": fn, ...}` dict shape have evolved.*
 
