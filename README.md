@@ -1,6 +1,7 @@
 # livefold
 
 *live + fold — incremental folds over a mutable sequence.*
+*("live" as in "live broadcast" — rhymes with "five", not "give".)*
 
 [![Build Status](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml/badge.svg)](https://github.com/danielenricocahall/livefold/actions/workflows/ci.yaml)
 [![Supported Versions](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://github.com/danielenricocahall/livefold/blob/main/pyproject.toml)
@@ -130,8 +131,6 @@ Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work n
 `TimeIndexedLiveFold` layers a parallel monotonically non-decreasing timestamp list on top. `query_time_range(start, end)` calls `bisect_left`/`bisect_right` to map timestamps to indices in O(log n), then routes through the same √n-decomposed query path — so overall query cost stays O(√n).
 
 For the full derivation, complexity analysis, and other implementation details, see the [corresponding blog post](https://dannycahall.substack.com/p/square-root-decomposition-made-mutable).
-
-> *Note: the blog post predates the rebrand from `pysquagg` and uses the old singular `aggregator_function=` API. The math and structural choices are unchanged; only the package name and the `folds={"name": fn, ...}` dict shape have evolved.*
 
 ## Fold contract
 
