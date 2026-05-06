@@ -8,7 +8,7 @@
 [![license](https://img.shields.io/github/license/danielenricocahall/livefold.svg)](https://github.com/danielenricocahall/livefold/blob/main/LICENSE)
 
 > A primitive for online sequential aggregation in Python.
-> Maintain a mutable numeric sequence; query exact aggregates over any range
+> Maintain a mutable sequence; query exact aggregates over any range
 > in **O(√n)**; plug in any associative reducer (any monoid).
 
 ## When to reach for it
