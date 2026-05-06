@@ -30,4 +30,4 @@ That installs Streamlit, Plotly, and `psutil` alongside livefold. The base libra
 
 ## Why two?
 
-The library isn't tied to one domain. The system-metrics demo speaks to observability/SRE folks; the crypto demo speaks to quant/finance folks; the same `TimeIndexedLiveFold` instance works for both. Together they make the implicit point that this is a **primitive** — applicable wherever you have a mutable numeric stream and want fast aggregates over arbitrary ranges.
+The library isn't tied to one domain. The system-metrics demo speaks to observability/SRE folks; the crypto demo speaks to quant/finance folks; the same `TimeIndexedLiveFold` instance works for both. Together they make the implicit point that this is a **primitive** — applicable wherever you have a mutable sequence and want fast aggregates over arbitrary ranges.
