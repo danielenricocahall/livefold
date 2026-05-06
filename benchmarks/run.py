@@ -160,11 +160,14 @@ def write_results(
         "",
         "**Appends:** `naive` and `prefix_sums` append in single-digit nanoseconds"
         " (essentially free, at the timer's resolution floor). `livefold`'s"
-        " amortized cost is **flat at ~2 µs across all n**. Both `numpy` and"
+        " *median* append is **~2 µs across all n** — most appends just push onto"
+        " the last block. Amortized cost is O(√n): boundary-crossing rebuilds"
+        " are O(n) and happen ~once per √n appends, but the rebuild spikes are"
+        " a minority of calls and don't show up in the median. Both `numpy` and"
         " `pandas` rise linearly because every append rebuilds the underlying"
         " buffer — at n = 10⁷, pandas hits **180 ms per append** (~86,000x slower"
-        " than livefold) and numpy reaches **4 ms** (~2,000x slower). Both are"
-        " unusable for streaming workloads as the collection grows.",
+        " than livefold's median) and numpy reaches **4 ms** (~2,000x slower)."
+        " Both are unusable for streaming workloads as the collection grows.",
         "",
         "**The takeaway:** `livefold` is the only backend competitive on both axes"
         " across all scales. `naive`/`prefix_sums` lose on query latency above"

@@ -46,7 +46,7 @@ lf.query(2, 5)
 
 ![Query latency vs collection size](https://raw.githubusercontent.com/danielenricocahall/livefold/main/benchmarks/plots/query_latency.png)
 
-At n = 10⁷, `livefold`'s median range query is **69 µs vs naive Python's 29 ms** (~400× faster), and append cost stays **flat at 2 µs across all n** while every other backend with a competitive query path (numpy, pandas) degrades linearly on appends. `livefold` is the only line that doesn't bend the wrong way on either axis.
+At n = 10⁷, `livefold`'s median range query is **69 µs vs naive Python's 29 ms** (~400× faster), and median append cost is **~2 µs across all n** while every other backend with a competitive query path (numpy, pandas) degrades linearly on *every* append. livefold's amortized append is O(√n) — boundary-crossing rebuilds are rare (~one per √n appends) but real — so the median characterizes typical streaming latency, not the rare rebuild spike.
 
 Full methodology, append benchmarks, comparison against four backends, and the reproduction script: [`benchmarks/`](https://github.com/danielenricocahall/livefold/tree/main/benchmarks).
 
@@ -66,7 +66,7 @@ LiveFold(data: Iterable, folds: dict[str, Callable])
 
 | Member | Returns | Notes |
 |---|---|---|
-| `lf.append(x)` | `None` | Amortized O(1) |
+| `lf.append(x)` | `None` | Amortized O(√n); worst-case O(n) on perfect-square crossings |
 | `lf.query(left, right)` | `dict[str, Any]` | O(√n); inclusive bounds |
 | `lf.blocks` | `list[list]` | Underlying √n-sized blocks |
 | `lf.folded_values` | `dict[str, list]` | Per-fold, per-block aggregates |
@@ -125,7 +125,7 @@ Integer indexing (`lf[i] = x`, `del lf[i]`), `pop`, `remove`, and `clear` work n
 
 ![Append re-block animation](https://raw.githubusercontent.com/danielenricocahall/livefold/main/assets/resize_animation.gif)
 
-`append` is **amortized O(1)**: most appends just push onto the last block, but each time `n` crosses a perfect square, `block_size = isqrt(n)` increments and the whole structure re-blocks — a one-off O(n) cost. Perfect squares get geometrically sparser as `n` grows (the gap between consecutive squares is `2k + 1`), so the total re-block work amortizes to O(1) per append.
+`append` is **amortized O(√n)**. Most appends just push onto the last block at O(1), but each time `n` crosses a perfect square, `block_size = isqrt(n)` increments and the whole structure re-blocks — an O(n) cost. The gap between consecutive perfect squares is `2k + 1` (linear in `k = √n`, not geometric), so over `n` appends total rebuild work sums to Σ_{k=1}^{√n} O(k²) = O(n^(3/2)) — i.e. O(√n) per append amortized. Boundary crossings happen only ~once per √n appends, though, so the *median* append latency stays in the low µs range across all `n` (this is what the benchmarks show); the asymptotic only shows up in mean or total cost.
 
 `TimeIndexedLiveFold` layers a parallel monotonically non-decreasing timestamp list on top. `query_time_range(start, end)` calls `bisect_left`/`bisect_right` to map timestamps to indices in O(log n), then routes through the same √n-decomposed query path — so overall query cost stays O(√n).
 
