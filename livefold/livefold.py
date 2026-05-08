@@ -1,6 +1,7 @@
 import bisect
 import copy as _copy
 import time
+from itertools import chain
 
 from math import isqrt
 from typing import Any, Generic, Iterable, Callable, TypeVar
@@ -235,9 +236,11 @@ class LiveFold(list):
             final_value = self._block_folds(right_block)
         return {
             name: fn(
-                [initial_value[name]]
-                + self.folded_values[name][left_block + 1 : right_block]
-                + [final_value[name]]
+                chain(
+                    [initial_value[name]],
+                    self.folded_values[name][left_block + 1 : right_block],
+                    [final_value[name]],
+                )
             )
             for name, fn in self.folds.items()
         }
