@@ -104,6 +104,15 @@ def test_pop_value():
     assert lf.folded_values == {"sum": [3, 9]}
 
 
+def test_pop_negative_index():
+    lf = LiveFold([1, 2, 3, 4, 5, 6], folds={"sum": sum})
+    assert lf.blocks == [[1, 2], [3, 4], [5, 6]]
+    val = lf.pop(-2)
+    assert val == 5
+    assert lf.blocks == [[1, 2], [3, 4], [6]]
+    assert lf.folded_values == {"sum": [3, 7, 6]}
+
+
 def test_pop_change_block_size():
     lf = LiveFold([1, 2, 3, 4, 5, 6, 7, 8, 9], folds={"sum": sum})
     assert lf.folded_values == {"sum": [6, 15, 24]}
