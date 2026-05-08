@@ -757,7 +757,7 @@ wheels = [
 
 [[package]]
 name = "livefold"
-version = "0.0.0"
+version = "0.1.2"
 source = { editable = "." }
 
 [package.dev-dependencies]
