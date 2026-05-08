@@ -83,13 +83,11 @@ class LiveFold(list):
         for name, fn in self.folds.items():
             self.folded_values[name].extend(map(fn, new_blocks))
 
-    def compute_blocks(self, start_index: int = 0):
+    def compute_blocks(self):
         block_size = self.block_size
         if not block_size:
             return []
-        return [
-            self[i : i + block_size] for i in range(start_index, len(self), block_size)
-        ]
+        return [self[i : i + block_size] for i in range(0, len(self), block_size)]
 
     def append(self, __object):
         self.extend([__object])
