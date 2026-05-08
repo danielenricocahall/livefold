@@ -133,22 +133,16 @@ class LiveFold(list):
 
     def pop(self, __index=-1):
         block_size = self.block_size
+        n = len(self)
         value = super().pop(__index)
         new_block_size = self.block_size
         if new_block_size != block_size:
             self.blocks = self.compute_blocks()
         else:
-            block_index = __index // block_size
-            self.blocks[block_index].pop(__index % block_size if __index >= 0 else -1)
-            if len(self.blocks[block_index]) == 0:
-                del self.blocks[block_index]
-                for name in self.folds:
-                    del self.folded_values[name][block_index]
-            else:
-                self.blocks[block_index:] = self.compute_blocks(
-                    block_index * block_size
-                )
-                self._refold_from(block_index)
+            idx = __index if __index >= 0 else n + __index
+            block_index = idx // block_size
+            self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
+            self._refold_from(block_index)
         return value
 
     def remove(self, __value):
