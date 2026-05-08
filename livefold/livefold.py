@@ -122,17 +122,20 @@ class LiveFold(list):
         new_block_size = self.block_size
         if new_block_size != block_size:
             self.blocks = self.compute_blocks()
-        else:
-            if (index := block_size - len(self.blocks[-1])) > 0:
-                self._merge_into_last_block_folds(__iterable[:index])
-                self.blocks[-1] += __iterable[:index]
-                __iterable = __iterable[index:]
-            self.__extend_blocks(__iterable)
+            return
+        start = 0
+        if (slack := block_size - len(self.blocks[-1])) > 0:
+            prefix = __iterable[:slack]
+            self._merge_into_last_block_folds(prefix)
+            self.blocks[-1] += prefix
+            start = slack
+        self.__extend_blocks(__iterable, start)
 
-    def __extend_blocks(self, iterable):
+    def __extend_blocks(self, iterable, start=0):
         block_size = self.block_size
         new_blocks = [
-            iterable[i : i + block_size] for i in range(0, len(iterable), block_size)
+            iterable[i : i + block_size]
+            for i in range(start, len(iterable), block_size)
         ]
         self.blocks.extend(new_blocks)
         self._extend_block_folds(new_blocks)
