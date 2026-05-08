@@ -83,27 +83,32 @@ class LiveFold(list):
         for name, fn in self.folds.items():
             self.folded_values[name].extend(map(fn, new_blocks))
 
-    def compute_blocks(self, start_index: int = 0):
+    def compute_blocks(self):
         block_size = self.block_size
         if not block_size:
             return []
-        return [
-            self[i : i + block_size] for i in range(start_index, len(self), block_size)
-        ]
+        return [self[i : i + block_size] for i in range(0, len(self), block_size)]
 
     def append(self, __object):
         self.extend([__object])
 
     def insert(self, __index, __object):
         block_size = self.block_size
+        n = len(self)
         super().insert(__index, __object)
         new_block_size = self.block_size
         if new_block_size != block_size:
             self.blocks = self.compute_blocks()
-        else:
-            block_index = __index // block_size
-            self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
-            self._refold_from(block_index)
+            return
+        idx = __index if __index >= 0 else n + __index
+        idx = max(0, min(idx, n))
+        block_index = min(idx // block_size, len(self.blocks) - 1)
+        self.blocks[block_index].insert(idx - block_index * block_size, __object)
+        for i in range(block_index, len(self.blocks) - 1):
+            self.blocks[i + 1].insert(0, self.blocks[i].pop())
+        if len(self.blocks[-1]) > block_size:
+            self.blocks.append([self.blocks[-1].pop()])
+        self._refold_from(block_index)
 
     def sort(self, *, key=None, reverse=False):
         super().sort(key=key, reverse=reverse)
@@ -138,11 +143,15 @@ class LiveFold(list):
         new_block_size = self.block_size
         if new_block_size != block_size:
             self.blocks = self.compute_blocks()
-        else:
-            idx = __index if __index >= 0 else n + __index
-            block_index = idx // block_size
-            self.blocks[block_index:] = self.compute_blocks(block_index * block_size)
-            self._refold_from(block_index)
+            return value
+        idx = __index if __index >= 0 else n + __index
+        block_index = idx // block_size
+        self.blocks[block_index].pop(idx - block_index * block_size)
+        for i in range(block_index + 1, len(self.blocks)):
+            self.blocks[i - 1].append(self.blocks[i].pop(0))
+        if not self.blocks[-1]:
+            self.blocks.pop()
+        self._refold_from(block_index)
         return value
 
     def remove(self, __value):

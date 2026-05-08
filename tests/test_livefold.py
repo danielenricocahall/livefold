@@ -49,6 +49,14 @@ def test_insert_no_change_to_block_size():
     assert lf.folded_values == {"sum": [3, 7, 11, 7]}
 
 
+def test_insert_negative_index():
+    lf = LiveFold([1, 2, 3, 5, 6, 7], folds={"sum": sum})
+    lf.insert(-3, 4)
+    assert list(lf) == [1, 2, 3, 4, 5, 6, 7]
+    assert lf.blocks == [[1, 2], [3, 4], [5, 6], [7]]
+    assert lf.folded_values == {"sum": [3, 7, 11, 7]}
+
+
 def test_insert_block_size_changes():
     lf = LiveFold([1, 2, 3, 5, 6, 7, 8, 9], folds={"sum": sum})
     orig_blocks = lf.blocks
