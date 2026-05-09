@@ -264,6 +264,81 @@ def test_set_range_fewer_values():
     assert lf.folded_values == {"sum": [1, 1, 13, 8]}
 
 
+def test_set_range_extended_slice():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[::2] = [-1, -2, -3, -4, -5]
+    assert list(lf) == [-1, 1, -2, 3, -3, 5, -4, 7, -5]
+    assert lf.blocks == [[-1, 1, -2], [3, -3, 5], [-4, 7, -5]]
+    assert lf.folded_values == {"sum": [-2, 5, -2]}
+
+
+def test_set_range_noop():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[3:3] = []
+    assert lf.blocks == [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+    assert lf.folded_values == {"sum": [3, 12, 21]}
+
+
+def test_set_range_append_via_slice():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[len(lf) : len(lf)] = [99]
+    assert list(lf) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 99]
+    assert lf.blocks == [[0, 1, 2], [3, 4, 5], [6, 7, 8], [99]]
+    assert lf.folded_values == {"sum": [3, 12, 21, 99]}
+
+
+def test_set_range_prepend_via_slice():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[0:0] = [99, 98]
+    assert list(lf) == [99, 98, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+    assert lf.blocks == [[99, 98, 0], [1, 2, 3], [4, 5, 6], [7, 8]]
+    assert lf.folded_values == {"sum": [197, 6, 15, 15]}
+
+
+def test_set_range_negative_indices():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[-3:] = [-7, -8, -9]
+    assert list(lf) == [0, 1, 2, 3, 4, 5, -7, -8, -9]
+    assert lf.blocks == [[0, 1, 2], [3, 4, 5], [-7, -8, -9]]
+    assert lf.folded_values == {"sum": [3, 12, -24]}
+
+
+def test_set_range_inverted_bounds():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[5:2] = [99]
+    assert list(lf) == [0, 1, 2, 3, 4, 99, 5, 6, 7, 8]
+
+
+def test_set_range_within_block_larger():
+    lf = LiveFold(list(range(16)), folds={"sum": sum})
+    assert lf.blocks == [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
+    lf[5:11] = [-1, -2, -3, -4, -5, -6]
+    assert list(lf) == [0, 1, 2, 3, 4, -1, -2, -3, -4, -5, -6, 11, 12, 13, 14, 15]
+    assert lf.blocks == [
+        [0, 1, 2, 3],
+        [4, -1, -2, -3],
+        [-4, -5, -6, 11],
+        [12, 13, 14, 15],
+    ]
+    assert lf.folded_values == {"sum": [6, -2, -4, 54]}
+
+
+def test_set_range_replace_all():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[:] = [9, 8, 7, 6, 5, 4, 3, 2, 1]
+    assert list(lf) == [9, 8, 7, 6, 5, 4, 3, 2, 1]
+    assert lf.blocks == [[9, 8, 7], [6, 5, 4], [3, 2, 1]]
+    assert lf.folded_values == {"sum": [24, 15, 6]}
+
+
+def test_set_range_clear_via_slice():
+    lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
+    lf[:] = []
+    assert list(lf) == []
+    assert lf.blocks == []
+    assert lf.folded_values == {"sum": []}
+
+
 def test_clear():
     lf = LiveFold([0, 1, 2, 3, 4, 5, 6, 7, 8], folds={"sum": sum})
     lf.clear()

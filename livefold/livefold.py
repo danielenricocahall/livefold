@@ -173,18 +173,55 @@ class LiveFold(list):
         return self
 
     def __setitem__(self, key, value):
-        super().__setitem__(key, value)
-        if isinstance(key, slice):
-            # TODO: for slice assignment we recompute all blocks - this can be optimized but
-            # requires more thought for all edge cases
-            self.blocks = self.compute_blocks()
-        else:
+        if not isinstance(key, slice):
+            super().__setitem__(key, value)
             if key < 0:
                 key += len(self)
             block_size = self.block_size
             block_index = key // block_size
             self.blocks[block_index][key % block_size] = value
             self._refold_at(block_index)
+            return
+
+        if key.step is not None and key.step != 1:
+            super().__setitem__(key, value)
+            self.blocks = self.compute_blocks()
+            return
+
+        pre_block_size = self.block_size
+        start, stop, _ = key.indices(len(self))
+        if stop < start:
+            stop = start
+        value = list(value)
+        super().__setitem__(slice(start, stop, 1), value)
+
+        block_size = self.block_size
+        if block_size != pre_block_size:
+            self.blocks = self.compute_blocks()
+            return
+        if block_size == 0:
+            self.blocks = []
+            return
+
+        left_block = start // block_size
+        if len(value) == stop - start:
+            if stop == start:
+                return
+            right_block = (stop - 1) // block_size
+            end = right_block + 1
+            edge = min(end * block_size, len(self))
+            self.blocks[left_block:end] = [
+                self[i : i + block_size]
+                for i in range(left_block * block_size, edge, block_size)
+            ]
+            for bi in range(left_block, end):
+                self._refold_at(bi)
+        else:
+            from_idx = left_block * block_size
+            self.blocks[left_block:] = [
+                self[i : i + block_size] for i in range(from_idx, len(self), block_size)
+            ]
+            self._refold_from(left_block)
 
     def __delitem__(self, key):
         if isinstance(key, slice):
